@@ -5,6 +5,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "./ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
+import { ThemeToggle } from "./ThemeToggle";
 
 const navigationItems = [
   { to: "/", icon: Home, label: "Home" },
@@ -45,10 +46,11 @@ const DesktopLayout = () => {
   return (
     <div className="hidden border-r bg-muted/40 md:block">
       <div className="flex h-full max-h-screen flex-col gap-2">
-        <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+        <div className="flex h-14 items-center justify-between border-b px-4 lg:h-[60px] lg:px-6">
           <NavLink to="/" className="flex items-center gap-2 font-semibold">
             <span className="">Crypto AI Analyzer</span>
           </NavLink>
+          <ThemeToggle />
         </div>
         <div className="flex-1">
           <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
@@ -97,6 +99,12 @@ const Layout = () => {
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
       <DesktopLayout />
       <div className="flex flex-col">
+        <header className="flex h-14 items-center justify-between border-b bg-muted/40 px-4 md:hidden">
+            <NavLink to="/" className="flex items-center gap-2 font-semibold">
+                <span className="">Crypto AI Analyzer</span>
+            </NavLink>
+            <ThemeToggle />
+        </header>
         <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 pb-20 md:pb-6">
           <Outlet />
         </main>
