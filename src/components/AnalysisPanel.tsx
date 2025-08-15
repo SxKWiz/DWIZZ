@@ -45,7 +45,7 @@ const AnalysisResultDisplay = ({ result }: { result: AnalysisResult }) => (
     </div>
 );
 
-const AnalysisPanel = ({ chartData }: { chartData: ChartData[] }) => {
+const AnalysisPanel = ({ chartData, symbol }: { chartData: ChartData[], symbol: string }) => {
     const [mode, setMode] = useState<AnalysisMode>('normal');
     const [loading, setLoading] = useState(false);
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
@@ -61,7 +61,7 @@ const AnalysisPanel = ({ chartData }: { chartData: ChartData[] }) => {
 
         try {
             const { data: resultData, error: functionError } = await supabase.functions.invoke('analyze-symbol', {
-                body: { symbol: 'BTC/USDT', chartData },
+                body: { symbol, chartData },
             });
 
             if (functionError) {
@@ -75,7 +75,7 @@ const AnalysisPanel = ({ chartData }: { chartData: ChartData[] }) => {
                     .from('analysis_history')
                     .insert({
                         user_id: user.id,
-                        symbol: 'BTC/USDT',
+                        symbol: symbol,
                         mode: mode,
                         result: resultData
                     });
@@ -99,7 +99,7 @@ const AnalysisPanel = ({ chartData }: { chartData: ChartData[] }) => {
         <Card>
             <CardHeader>
                 <CardTitle>AI Analysis</CardTitle>
-                <CardDescription>Select a mode and click analyze to get an AI-powered trade signal.</CardDescription>
+                <CardDescription>Select a mode and click analyze to get an AI-powered trade signal for {symbol.replace('USDT', '/USDT')}.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
