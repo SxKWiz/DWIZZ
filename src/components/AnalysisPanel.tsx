@@ -13,6 +13,11 @@ import { AnalysisResult, AnalysisResultDisplay } from './AnalysisResultDisplay';
 
 type AnalysisMode = 'normal' | 'ultra';
 
+const modeDescriptions: Record<AnalysisMode, string> = {
+    normal: 'Normal mode provides a quick analysis based on recent price action and key patterns.',
+    ultra: 'Ultra mode conducts a deep, institutional-grade analysis of the broader market structure.'
+};
+
 const AnalysisPanel = ({ chartData, symbol }: { chartData: ChartData[], symbol: string }) => {
     const [mode, setMode] = useState<AnalysisMode>('normal');
     const [loading, setLoading] = useState(false);
@@ -72,24 +77,29 @@ const AnalysisPanel = ({ chartData, symbol }: { chartData: ChartData[], symbol: 
                 <CardDescription>Select a mode and click analyze to get an AI-powered trade signal for {symbol.replace('USDT', '/USDT')}.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <ToggleGroup
-                        type="single"
-                        value={mode}
-                        onValueChange={(value) => {
-                            if (value) setMode(value as AnalysisMode)
-                        }}
-                        aria-label="Analysis Mode"
-                    >
-                        <ToggleGroupItem value="normal" aria-label="Normal Mode">
-                            Normal (Flash)
-                        </ToggleGroupItem>
-                        <ToggleGroupItem value="ultra" aria-label="Ultra Mode">
-                            <Zap className="h-4 w-4 mr-2 text-yellow-500" />
-                            Ultra (Pro)
-                        </ToggleGroupItem>
-                    </ToggleGroup>
-                    <Button onClick={handleAnalyze} disabled={loading || chartData.length === 0} className="w-full sm:w-auto">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                    <div className="flex-grow">
+                        <ToggleGroup
+                            type="single"
+                            value={mode}
+                            onValueChange={(value) => {
+                                if (value) setMode(value as AnalysisMode)
+                            }}
+                            aria-label="Analysis Mode"
+                        >
+                            <ToggleGroupItem value="normal" aria-label="Normal Mode">
+                                Normal (Flash)
+                            </ToggleGroupItem>
+                            <ToggleGroupItem value="ultra" aria-label="Ultra Mode">
+                                <Zap className="h-4 w-4 mr-2 text-yellow-500" />
+                                Ultra (Pro)
+                            </ToggleGroupItem>
+                        </ToggleGroup>
+                        <p className="text-xs text-muted-foreground mt-2 h-8 sm:h-auto">
+                            {modeDescriptions[mode]}
+                        </p>
+                    </div>
+                    <Button onClick={handleAnalyze} disabled={loading || chartData.length === 0} className="w-full sm:w-auto flex-shrink-0">
                         <Wand2 className="mr-2 h-4 w-4" />
                         {loading ? 'Analyzing...' : 'Analyze Chart'}
                     </Button>
