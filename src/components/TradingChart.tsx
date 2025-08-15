@@ -1,11 +1,11 @@
-import { createChart, IChartApi, CandlestickData, ColorType } from 'lightweight-charts';
+import * as LightweightCharts from 'lightweight-charts';
 import React, { useEffect, useRef } from 'react';
 
-export type ChartData = CandlestickData;
+export type ChartData = LightweightCharts.CandlestickData;
 
 export const TradingChart = ({ data }: { data: ChartData[] }) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
-    const chartInstanceRef = useRef<IChartApi | null>(null);
+    const chartInstanceRef = useRef<LightweightCharts.IChartApi | null>(null);
 
     useEffect(() => {
         if (!chartContainerRef.current || data.length === 0) {
@@ -20,9 +20,9 @@ export const TradingChart = ({ data }: { data: ChartData[] }) => {
             chartInstanceRef.current.remove();
         }
 
-        const chart = createChart(chartContainerRef.current, {
+        const chart = LightweightCharts.createChart(chartContainerRef.current, {
             layout: {
-                background: { type: ColorType.Solid, color: 'transparent' },
+                background: { type: LightweightCharts.ColorType.Solid, color: 'transparent' },
                 textColor: 'hsl(var(--foreground))',
             },
             grid: {
