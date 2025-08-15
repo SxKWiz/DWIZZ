@@ -1,7 +1,10 @@
-import { NavLink, Outlet } from "react-router-dom";
-import { Home, History, Settings as SettingsIcon } from "lucide-react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Home, History, Settings as SettingsIcon, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Button } from "./ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/context/AuthContext";
 
 const navigationItems = [
   { to: "/", icon: Home, label: "Home" },
@@ -30,30 +33,62 @@ const NavLinks = ({ isMobile }: { isMobile: boolean }) => (
   </>
 );
 
-const DesktopLayout = () => (
-  <div className="hidden border-r bg-muted/40 md:block">
-    <div className="flex h-full max-h-screen flex-col gap-2">
-      <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-        <NavLink to="/" className="flex items-center gap-2 font-semibold">
-          <span className="">Crypto AI Analyzer</span>
-        </NavLink>
-      </div>
-      <div className="flex-1">
-        <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
-          <NavLinks isMobile={false} />
-        </nav>
+const DesktopLayout = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/login');
+  };
+
+  return (
+    <div className="hidden border-r bg-muted/40 md:block">
+      <div className="flex h-full max-h-screen flex-col gap-2">
+        <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+          <NavLink to="/" className="flex items-center gap-2 font-semibold">
+            <span className="">Crypto AI Analyzer</span>
+          </NavLink>
+        </div>
+        <div className="flex-1">
+          <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
+            <NavLinks isMobile={false} />
+          </nav>
+        </div>
+        <div className="mt-auto p-4">
+          <div className="text-xs text-muted-foreground truncate mb-2">{user?.email}</div>
+          <Button variant="secondary" className="w-full" onClick={handleLogout}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Logout
+          </Button>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
-const MobileLayout = () => (
-    <nav className="fixed inset-x-0 bottom-0 z-50 border-t bg-background md:hidden">
-        <div className="grid h-16 grid-cols-3">
-            <NavLinks isMobile={true} />
-        </div>
-    </nav>
-);
+const MobileLayout = () => {
+    const navigate = useNavigate();
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        navigate('/login');
+    };
+
+    return (
+        <nav className="fixed inset-x-0 bottom-0 z-50 border-t bg-background md:hidden">
+            <div className="grid h-16 grid-cols-4">
+                <NavLinks isMobile={true} />
+                <button
+                    onClick={handleLogout}
+                    className="flex flex-col items-center justify-center text-xs h-16 gap-1 text-muted-foreground"
+                >
+                    <LogOut className="h-5 w-5" />
+                    <span>Logout</span>
+                </button>
+            </div>
+        </nav>
+    );
+};
 
 const Layout = () => {
   const isMobile = useIsMobile();
