@@ -28,7 +28,7 @@ export const AnalysisResultDisplay = ({ result }: { result: AnalysisResult }) =>
                 <p className="text-sm m-0">{result.summary}</p>
             </div>
         )}
-        <p>{result.description}</p>
+        <div className="whitespace-pre-line">{result.description}</div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 not-prose">
             <Card>
                 <CardHeader className="p-4">
