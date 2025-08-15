@@ -75,7 +75,7 @@ const Home = () => {
                     )}
                 </CardContent>
             </Card>
-            <AnalysisPanel />
+            <AnalysisPanel chartData={chartData} />
         </div>
     );
 };

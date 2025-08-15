@@ -8,6 +8,7 @@ import { Wand2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
+import { ChartData } from './TradingChart';
 
 type AnalysisMode = 'normal' | 'ultra';
 
@@ -44,29 +45,33 @@ const AnalysisResultDisplay = ({ result }: { result: AnalysisResult }) => (
     </div>
 );
 
-const AnalysisPanel = () => {
+const AnalysisPanel = ({ chartData }: { chartData: ChartData[] }) => {
     const [mode, setMode] = useState<AnalysisMode>('normal');
     const [loading, setLoading] = useState(false);
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
     const { user } = useAuth();
 
-    const handleAnalyze = () => {
+    const handleAnalyze = async () => {
+        if (chartData.length === 0) {
+            showError("Chart data is not available for analysis.");
+            return;
+        }
         setLoading(true);
         setAnalysisResult(null);
-        // Simulate AI analysis API call
-        setTimeout(async () => {
-            const resultData: AnalysisResult = {
-                description: "Based on the multi-timeframe analysis, the current market structure for BTC/USDT appears to be consolidating within a bullish trend. Key support is identified near the $67,000 level, with resistance at $72,000.",
-                entryPrice: "$68,000 - $68,500",
-                takeProfit: "$72,000",
-                stopLoss: "$67,000"
-            };
+
+        try {
+            const { data: resultData, error: functionError } = await supabase.functions.invoke('analyze-symbol', {
+                body: { symbol: 'BTC/USDT', chartData },
+            });
+
+            if (functionError) {
+                throw functionError;
+            }
             
             setAnalysisResult(resultData);
-            setLoading(false);
 
             if (user) {
-                const { error } = await supabase
+                const { error: insertError } = await supabase
                     .from('analysis_history')
                     .insert({
                         user_id: user.id,
@@ -75,14 +80,19 @@ const AnalysisPanel = () => {
                         result: resultData
                     });
 
-                if (error) {
+                if (insertError) {
                     showError('Failed to save analysis history.');
-                    console.error('Error saving analysis:', error);
+                    console.error('Error saving analysis:', insertError);
                 } else {
                     showSuccess('Analysis saved to history.');
                 }
             }
-        }, 1500);
+        } catch (error) {
+            console.error('Error performing analysis:', error);
+            showError('An error occurred during analysis.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -108,7 +118,7 @@ const AnalysisPanel = () => {
                             Ultra (Pro)
                         </ToggleGroupItem>
                     </ToggleGroup>
-                    <Button onClick={handleAnalyze} disabled={loading} className="w-full sm:w-auto">
+                    <Button onClick={handleAnalyze} disabled={loading || chartData.length === 0} className="w-full sm:w-auto">
                         <Wand2 className="mr-2 h-4 w-4" />
                         {loading ? 'Analyzing...' : 'Analyze Chart'}
                     </Button>
