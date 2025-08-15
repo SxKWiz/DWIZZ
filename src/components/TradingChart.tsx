@@ -1,14 +1,14 @@
-import { createChart, IChartApi, CandlestickData, ColorType } from 'lightweight-charts';
+import * as LightweightCharts from 'lightweight-charts';
 import React, { useEffect, useRef } from 'react';
 
-export type ChartData = CandlestickData;
+export type ChartData = LightweightCharts.CandlestickData;
 
 export const TradingChart = ({ data }: { data: ChartData[] }) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
-    const chartInstanceRef = useRef<IChartApi | null>(null); // Ref to store the chart instance
+    const chartInstanceRef = useRef<LightweightCharts.IChartApi | null>(null); // Ref to store the chart instance
 
     useEffect(() => {
-        if (!chartContainerRef.current || data.length === 0) {
+        if (!chartContainerRef.current) {
             return;
         }
 
@@ -18,9 +18,41 @@ export const TradingChart = ({ data }: { data: ChartData[] }) => {
             chartInstanceRef.current = null;
         }
 
-        const chart = createChart(chartContainerRef.current, {
+        // Validate and prepare data
+        const validData = data
+            .filter((item): item is LightweightCharts.CandlestickData & { time: LightweightCharts.UTCTimestamp } => 
+                item && 
+                typeof item.time === 'number' && 
+                typeof item.open === 'number' && 
+                typeof item.high === 'number' && 
+                typeof item.low === 'number' && 
+                typeof item.close === 'number' &&
+                !isNaN(item.time) &&
+                !isNaN(item.open) &&
+                !isNaN(item.high) &&
+                !isNaN(item.low) &&
+                !isNaN(item.close)
+            )
+            // Remove duplicates by time
+            .filter((value, index, self) =>
+                index === self.findIndex((t) => t.time === value.time)
+            )
+            // Sort by time in ascending order
+            .sort((a, b) => a.time - b.time);
+
+        // Don't create chart if no valid data
+        if (validData.length === 0) {
+            if (chartContainerRef.current) {
+                chartContainerRef.current.innerHTML = `<div class="flex items-center justify-center h-full text-muted-foreground">No chart data available</div>`;
+            }
+            return;
+        } else if (chartContainerRef.current) {
+            chartContainerRef.current.innerHTML = '';
+        }
+
+        const chart = LightweightCharts.createChart(chartContainerRef.current, {
             layout: {
-                background: { type: ColorType.Solid, color: 'transparent' },
+                background: { type: LightweightCharts.ColorType.Solid, color: 'transparent' },
                 textColor: 'hsl(var(--foreground))',
             },
             grid: {
@@ -35,7 +67,7 @@ export const TradingChart = ({ data }: { data: ChartData[] }) => {
         chartInstanceRef.current = chart;
 
         // Add candlestick series
-        const candlestickSeries = chart.addCandlestickSeries({
+        const candlestickSeries = (chart as any).addCandlestickSeries({
             upColor: '#26a69a',
             downColor: '#ef5350',
             borderDownColor: '#ef5350',
@@ -44,7 +76,7 @@ export const TradingChart = ({ data }: { data: ChartData[] }) => {
             wickUpColor: '#26a69a',
         });
 
-        candlestickSeries.setData(data);
+        candlestickSeries.setData(validData);
         chart.timeScale().fitContent();
 
         const handleResize = () => {
@@ -65,7 +97,9 @@ export const TradingChart = ({ data }: { data: ChartData[] }) => {
         };
     }, [data]); // Re-create the chart whenever the data changes
 
-    return <div ref={chartContainerRef} className="w-full h-[500px]" />;
+    return (
+        <div ref={chartContainerRef} className="w-full h-[500px]" />
+    );
 };
 
 export default TradingChart;
