@@ -14,40 +14,51 @@ type CandlestickData = {
     close: number;
 };
 
-function performUltraAnalysis(chartData: CandlestickData[]) {
-    if (!chartData || chartData.length < 10) {
-        return {
-            description: "Not enough data for Ultra analysis.",
-            entryPrice: "N/A",
-            takeProfit: "N/A",
-            stopLoss: "N/A",
-            confidence: "Low",
-            summary: "Insufficient data."
-        };
+async function performUltraAnalysisWithGemini(chartData: CandlestickData[], symbol: string) {
+    const apiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!apiKey) {
+        throw new Error("GEMINI_API_KEY is not set in Supabase secrets.");
     }
 
-    const recentData = chartData.slice(-10);
-    const lastCandle = recentData[recentData.length - 1];
-    const firstCandle = recentData[0];
+    const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
 
-    const priceChange = ((lastCandle.close - firstCandle.open) / firstCandle.open) * 100;
-    const isBullish = lastCandle.close > lastCandle.open;
-    const trend = priceChange > 0 ? "upward" : "downward";
-    const volatility = recentData.reduce((acc, c) => acc + (c.high - c.low), 0) / recentData.length;
-    const confidence = Math.min(95, 60 + Math.abs(priceChange) * 5 + (isBullish ? 5 : -5) - (volatility / lastCandle.close * 100)).toFixed(1);
+    const recentData = chartData.slice(-90);
 
-    const entryPrice = (lastCandle.close * 1.001).toFixed(2);
-    const takeProfit = (lastCandle.close * (1 + (volatility / lastCandle.close) * 2)).toFixed(2);
-    const stopLoss = (lastCandle.close * (1 - (volatility / lastCandle.close))).toFixed(2);
+    const prompt = `
+        You are a world-class quantitative crypto trading analyst. Perform an in-depth, "ultra" analysis of the following recent candlestick data for the symbol ${symbol}.
+        Consider momentum, volatility, recent trends, and key support/resistance levels implied by the data.
+        Provide a detailed analysis, a potential trade signal, and a confidence score. The analysis is for educational purposes only and not financial advice.
 
-    return {
-        description: `Over the last 10 periods, the price has shown a ${Math.abs(priceChange).toFixed(2)}% ${trend} movement. The most recent candle was ${isBullish ? 'bullish' : 'bearish'}. Current volatility suggests a wider stop-loss. This Ultra analysis indicates a potential long entry with a calculated risk/reward profile.`,
-        entryPrice: `$${entryPrice}`,
-        takeProfit: `$${takeProfit}`,
-        stopLoss: `$${stopLoss}`,
-        confidence: `${confidence}%`,
-        summary: `A ${trend} trend was detected with ${confidence}% confidence based on recent volatility and price action.`
-    };
+        Candlestick Data (UTC Timestamp, Open, High, Low, Close):
+        ${recentData.map(d => `[${d.time}, ${d.open}, ${d.high}, ${d.low}, ${d.close}]`).join('\n')}
+
+        Based on your comprehensive analysis, provide a response in the following JSON format ONLY. Do not include any other text, explanations, or markdown formatting.
+        {
+          "description": "A detailed summary of your analysis, including the factors you considered (volatility, trend, etc.) and the reasoning for the trade signal.",
+          "entryPrice": "A suggested entry price, formatted as a string like '$XXXX.XX'.",
+          "takeProfit": "A suggested take-profit price based on a reasonable risk/reward ratio, formatted as a string like '$XXXX.XX'.",
+          "stopLoss": "A suggested stop-loss price based on recent price action, formatted as a string like '$XXXX.XX'.",
+          "confidence": "Your confidence in this trade signal, formatted as a string like 'XX.X%'.",
+          "summary": "A very brief, one-sentence summary of the trade signal and your confidence."
+        }
+    `;
+
+    const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }]
+        })
+    });
+
+    if (!response.ok) {
+        const errorBody = await response.text();
+        throw new Error(`Gemini API request failed with status ${response.status}: ${errorBody}`);
+    }
+
+    const result = await response.json();
+    const jsonString = result.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim();
+    return JSON.parse(jsonString);
 }
 
 serve(async (req: Request) => {
@@ -65,13 +76,14 @@ serve(async (req: Request) => {
         })
     }
 
-    const analysisResult = performUltraAnalysis(chartData);
+    const analysisResult = await performUltraAnalysisWithGemini(chartData, symbol);
 
     return new Response(JSON.stringify(analysisResult), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
   } catch (error) {
+    console.error("Error in analyze-symbol-ultra function:", error);
     return new Response(JSON.stringify({ error: (error as Error).message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
