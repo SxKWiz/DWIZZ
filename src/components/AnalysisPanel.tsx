@@ -4,23 +4,41 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2 } from 'lucide-react';
+import { Wand2, Zap } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
 import { ChartData } from './TradingChart';
+import { Badge } from './ui/badge';
 
 type AnalysisMode = 'normal' | 'ultra';
 
-type AnalysisResult = {
+type BaseAnalysisResult = {
     description: string;
     entryPrice: string;
     takeProfit: string;
     stopLoss: string;
 };
 
+type UltraAnalysisResult = BaseAnalysisResult & {
+    confidence: string;
+    summary: string;
+};
+
+type AnalysisResult = BaseAnalysisResult | UltraAnalysisResult;
+
+function isUltraResult(result: AnalysisResult): result is UltraAnalysisResult {
+    return 'confidence' in result;
+}
+
 const AnalysisResultDisplay = ({ result }: { result: AnalysisResult }) => (
     <div className="prose prose-sm dark:prose-invert max-w-none">
+        {isUltraResult(result) && (
+            <div className="mb-4 p-4 bg-muted rounded-lg not-prose">
+                <h5 className="font-bold text-primary flex items-center"><Zap className="h-4 w-4 mr-2" />Ultra Analysis Summary</h5>
+                <p className="text-sm m-0">{result.summary}</p>
+            </div>
+        )}
         <p>{result.description}</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 not-prose">
             <Card>
@@ -42,6 +60,11 @@ const AnalysisResultDisplay = ({ result }: { result: AnalysisResult }) => (
                 </CardHeader>
             </Card>
         </div>
+        {isUltraResult(result) && (
+            <div className="mt-4 flex justify-end">
+                <Badge>Confidence: {result.confidence}</Badge>
+            </div>
+        )}
     </div>
 );
 
@@ -59,8 +82,10 @@ const AnalysisPanel = ({ chartData, symbol }: { chartData: ChartData[], symbol: 
         setLoading(true);
         setAnalysisResult(null);
 
+        const functionName = mode === 'ultra' ? 'analyze-symbol-ultra' : 'analyze-symbol';
+
         try {
-            const { data: resultData, error: functionError } = await supabase.functions.invoke('analyze-symbol', {
+            const { data: resultData, error: functionError } = await supabase.functions.invoke(functionName, {
                 body: { symbol, chartData },
             });
 
@@ -115,6 +140,7 @@ const AnalysisPanel = ({ chartData, symbol }: { chartData: ChartData[], symbol: 
                             Normal (Flash)
                         </ToggleGroupItem>
                         <ToggleGroupItem value="ultra" aria-label="Ultra Mode">
+                            <Zap className="h-4 w-4 mr-2 text-yellow-500" />
                             Ultra (Pro)
                         </ToggleGroupItem>
                     </ToggleGroup>
