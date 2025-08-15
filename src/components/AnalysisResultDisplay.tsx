@@ -39,13 +39,13 @@ export const AnalysisResultDisplay = ({ result }: { result: AnalysisResult }) =>
             <Card>
                 <CardHeader className="p-4">
                     <CardDescription>Take Profit</CardDescription>
-                    <CardTitle className="text-lg">{result.takeProfit}</CardTitle>
+                    <CardTitle className="text-lg text-green-500 dark:text-green-400">{result.takeProfit}</CardTitle>
                 </CardHeader>
             </Card>
             <Card>
                 <CardHeader className="p-4">
                     <CardDescription>Stop Loss</CardDescription>
-                    <CardTitle className="text-lg">{result.stopLoss}</CardTitle>
+                    <CardTitle className="text-lg text-red-500 dark:text-red-400">{result.stopLoss}</CardTitle>
                 </CardHeader>
             </Card>
         </div>
