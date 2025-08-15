@@ -17,53 +17,45 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import AvatarUploader from '@/components/AvatarUploader';
 
 const profileFormSchema = z.object({
-  first_name: z.string().min(1, 'First name is required').optional(),
-  last_name: z.string().min(1, 'Last name is required').optional(),
+  first_name: z.string().optional().or(z.literal('')),
+  last_name: z.string().optional().or(z.literal('')),
   email: z.string().email(),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
 
 const Settings = () => {
-  const { user } = useAuth();
+  const { user, profile, loading, refreshProfile } = useAuth();
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       first_name: '',
       last_name: '',
-      email: user?.email || '',
+      email: '',
     },
   });
 
-  const { isSubmitting, isDirty, isSubmitSuccessful } = form.formState;
+  const { isSubmitting, isDirty } = form.formState;
 
   useEffect(() => {
-    if (user) {
-      form.setValue('email', user.email || '');
-      const fetchProfile = async () => {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('first_name, last_name')
-          .eq('id', user.id)
-          .single();
-
-        if (error && error.code !== 'PGRST116') { // PGRST116: row not found
-          console.error('Error fetching profile:', error);
-          showError('Failed to load profile data.');
-        } else if (data) {
-          form.reset({
-            ...form.getValues(),
-            first_name: data.first_name || '',
-            last_name: data.last_name || '',
-          });
-        }
-      };
-      fetchProfile();
+    if (user && profile) {
+      form.reset({
+        email: user.email || '',
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+      });
+    } else if (user) {
+      form.reset({
+        email: user.email || '',
+        first_name: '',
+        last_name: '',
+      });
     }
-  }, [user, form]);
+  }, [user, profile, form]);
 
   const onSubmit = async (values: ProfileFormValues) => {
     if (!user) return;
@@ -82,11 +74,12 @@ const Settings = () => {
       console.error('Error updating profile:', error);
     } else {
       showSuccess('Profile updated successfully.');
+      await refreshProfile();
       form.reset(values);
     }
   };
 
-  if (!user) {
+  if (loading) {
     return (
       <Card>
         <CardHeader>
@@ -94,6 +87,13 @@ const Settings = () => {
           <Skeleton className="h-4 w-3/4" />
         </CardHeader>
         <CardContent className="space-y-8">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-20 w-20 rounded-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-32" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          </div>
           <div className="space-y-2">
             <Skeleton className="h-4 w-24" />
             <Skeleton className="h-10 w-full" />
@@ -112,9 +112,10 @@ const Settings = () => {
     <Card>
       <CardHeader>
         <CardTitle>Profile Settings</CardTitle>
-        <CardDescription>Update your personal information.</CardDescription>
+        <CardDescription>Update your personal information and avatar.</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-8">
+        <AvatarUploader />
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -125,7 +126,7 @@ const Settings = () => {
                   <FormItem>
                     <FormLabel>First Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Your first name" {...field} />
+                      <Input placeholder="Your first name" {...field} value={field.value ?? ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -138,7 +139,7 @@ const Settings = () => {
                   <FormItem>
                     <FormLabel>Last Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Your last name" {...field} />
+                      <Input placeholder="Your last name" {...field} value={field.value ?? ''} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

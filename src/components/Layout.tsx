@@ -1,11 +1,12 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { Home, History, Settings as SettingsIcon, LogOut } from "lucide-react";
+import { Home, History, Settings as SettingsIcon, LogOut, User as UserIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "./ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { ThemeToggle } from "./ThemeToggle";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 
 const navigationItems = [
   { to: "/", icon: Home, label: "Home" },
@@ -36,7 +37,7 @@ const NavLinks = ({ isMobile }: { isMobile: boolean }) => (
 
 const DesktopLayout = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -58,7 +59,20 @@ const DesktopLayout = () => {
           </nav>
         </div>
         <div className="mt-auto p-4">
-          <div className="text-xs text-muted-foreground truncate mb-2">{user?.email}</div>
+          <div className="flex items-center gap-3 mb-2">
+            <Avatar className="h-9 w-9">
+                <AvatarImage src={profile?.avatar_url || undefined} />
+                <AvatarFallback>
+                    <UserIcon className="h-5 w-5" />
+                </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col">
+                <span className="text-sm font-medium leading-none">
+                    {profile?.first_name || 'User'}
+                </span>
+                <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
+            </div>
+          </div>
           <Button variant="secondary" className="w-full" onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
             Logout
