@@ -4,20 +4,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { showError } from '@/utils/toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import AnalysisPanel from '@/components/AnalysisPanel';
-import * as LightweightCharts from 'lightweight-charts';
+import { UTCTimestamp } from 'lightweight-charts';
 
 // Mock data for testing when API is not available
 const mockChartData: ChartData[] = [
-    { time: 1704067200 as LightweightCharts.UTCTimestamp, open: 42000, high: 43500, low: 41500, close: 43200 }, // 2024-01-01
-    { time: 1704153600 as LightweightCharts.UTCTimestamp, open: 43200, high: 44800, low: 42800, close: 44500 }, // 2024-01-02
-    { time: 1704240000 as LightweightCharts.UTCTimestamp, open: 44500, high: 45200, low: 43900, close: 44100 }, // 2024-01-03
-    { time: 1704326400 as LightweightCharts.UTCTimestamp, open: 44100, high: 45800, low: 43800, close: 45600 }, // 2024-01-04
-    { time: 1704412800 as LightweightCharts.UTCTimestamp, open: 45600, high: 46200, low: 44800, close: 45900 }, // 2024-01-05
-    { time: 1704499200 as LightweightCharts.UTCTimestamp, open: 45900, high: 47100, low: 45400, close: 46800 }, // 2024-01-06
-    { time: 1704585600 as LightweightCharts.UTCTimestamp, open: 46800, high: 47500, low: 46200, close: 47200 }, // 2024-01-07
-    { time: 1704672000 as LightweightCharts.UTCTimestamp, open: 47200, high: 48000, low: 46900, close: 47800 }, // 2024-01-08
-    { time: 1704758400 as LightweightCharts.UTCTimestamp, open: 47800, high: 48500, low: 47300, close: 48200 }, // 2024-01-09
-    { time: 1704844800 as LightweightCharts.UTCTimestamp, open: 48200, high: 49100, low: 47900, close: 48900 }, // 2024-01-10
+    { time: 1704067200 as UTCTimestamp, open: 42000, high: 43500, low: 41500, close: 43200 }, // 2024-01-01
+    { time: 1704153600 as UTCTimestamp, open: 43200, high: 44800, low: 42800, close: 44500 }, // 2024-01-02
+    { time: 1704240000 as UTCTimestamp, open: 44500, high: 45200, low: 43900, close: 44100 }, // 2024-01-03
+    { time: 1704326400 as UTCTimestamp, open: 44100, high: 45800, low: 43800, close: 45600 }, // 2024-01-04
+    { time: 1704412800 as UTCTimestamp, open: 45600, high: 46200, low: 44800, close: 45900 }, // 2024-01-05
+    { time: 1704499200 as UTCTimestamp, open: 45900, high: 47100, low: 45400, close: 46800 }, // 2024-01-06
+    { time: 1704585600 as UTCTimestamp, open: 46800, high: 47500, low: 46200, close: 47200 }, // 2024-01-07
+    { time: 1704672000 as UTCTimestamp, open: 47200, high: 48000, low: 46900, close: 47800 }, // 2024-01-08
+    { time: 1704758400 as UTCTimestamp, open: 47800, high: 48500, low: 47300, close: 48200 }, // 2024-01-09
+    { time: 1704844800 as UTCTimestamp, open: 48200, high: 49100, low: 47900, close: 48900 }, // 2024-01-10
 ];
 
 const Home = () => {
@@ -40,7 +40,7 @@ const Home = () => {
                 }
 
                 const formattedData: ChartData[] = data.map((d: any) => ({
-                    time: (d[0] / 1000) as LightweightCharts.UTCTimestamp, // lightweight-charts expects UTC timestamp in seconds
+                    time: (d[0] / 1000) as UTCTimestamp, // lightweight-charts expects UTC timestamp in seconds
                     open: parseFloat(d[1]),
                     high: parseFloat(d[2]),
                     low: parseFloat(d[3]),
