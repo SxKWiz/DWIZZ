@@ -9,64 +9,9 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
 import { ChartData } from './TradingChart';
-import { Badge } from './ui/badge';
+import { AnalysisResult, AnalysisResultDisplay } from './AnalysisResultDisplay';
 
 type AnalysisMode = 'normal' | 'ultra';
-
-type BaseAnalysisResult = {
-    description: string;
-    entryPrice: string;
-    takeProfit: string;
-    stopLoss: string;
-};
-
-type UltraAnalysisResult = BaseAnalysisResult & {
-    confidence: string;
-    summary: string;
-};
-
-type AnalysisResult = BaseAnalysisResult | UltraAnalysisResult;
-
-function isUltraResult(result: AnalysisResult): result is UltraAnalysisResult {
-    return 'confidence' in result;
-}
-
-const AnalysisResultDisplay = ({ result }: { result: AnalysisResult }) => (
-    <div className="prose prose-sm dark:prose-invert max-w-none">
-        {isUltraResult(result) && (
-            <div className="mb-4 p-4 bg-muted rounded-lg not-prose">
-                <h5 className="font-bold text-primary flex items-center"><Zap className="h-4 w-4 mr-2" />Ultra Analysis Summary</h5>
-                <p className="text-sm m-0">{result.summary}</p>
-            </div>
-        )}
-        <p>{result.description}</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 not-prose">
-            <Card>
-                <CardHeader className="p-4">
-                    <CardDescription>Entry Price</CardDescription>
-                    <CardTitle className="text-xl">{result.entryPrice}</CardTitle>
-                </CardHeader>
-            </Card>
-            <Card>
-                <CardHeader className="p-4">
-                    <CardDescription>Take Profit</CardDescription>
-                    <CardTitle className="text-xl">{result.takeProfit}</CardTitle>
-                </CardHeader>
-            </Card>
-            <Card>
-                <CardHeader className="p-4">
-                    <CardDescription>Stop Loss</CardDescription>
-                    <CardTitle className="text-xl">{result.stopLoss}</CardTitle>
-                </CardHeader>
-            </Card>
-        </div>
-        {isUltraResult(result) && (
-            <div className="mt-4 flex justify-end">
-                <Badge>Confidence: {result.confidence}</Badge>
-            </div>
-        )}
-    </div>
-);
 
 const AnalysisPanel = ({ chartData, symbol }: { chartData: ChartData[], symbol: string }) => {
     const [mode, setMode] = useState<AnalysisMode>('normal');
