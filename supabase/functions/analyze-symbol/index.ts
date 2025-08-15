@@ -25,18 +25,23 @@ async function performAnalysisWithGemini(chartData: CandlestickData[], symbol: s
     const recentData = chartData.slice(-30);
 
     const prompt = `
-        You are an expert crypto trading analyst. Analyze the following recent candlestick data for the symbol ${symbol}.
-        Provide a brief analysis and a potential trade signal. The analysis should be for educational purposes only and not financial advice.
+        You are a professional quantitative trading analyst specializing in cryptocurrency markets. Your task is to perform a technical analysis on the provided candlestick data for ${symbol}.
 
-        Candlestick Data (UTC Timestamp, Open, High, Low, Close):
+        **Analysis Requirements:**
+        1.  **Identify Key Patterns:** Scan the data for significant candlestick patterns (e.g., Doji, Hammer, Engulfing patterns) and simple chart patterns (e.g., support/resistance flips, trendlines).
+        2.  **Interpret Implications:** Briefly explain what these patterns typically indicate in the context of the current market trend.
+        3.  **Formulate a Trade Signal:** Based on your analysis, provide a clear, actionable trade signal. This is for educational purposes and is not financial advice.
+        4.  **Strict JSON Output:** The entire response must be a single, valid JSON object with no additional text, comments, or markdown.
+
+        **Candlestick Data (Last 30 periods - UTC Timestamp, Open, High, Low, Close):**
         ${recentData.map(d => `[${d.time}, ${d.open}, ${d.high}, ${d.low}, ${d.close}]`).join('\n')}
 
-        Based on your analysis, provide a response in the following JSON format ONLY. Do not include any other text, explanations, or markdown formatting.
+        **Required JSON Format:**
         {
-          "description": "A brief summary of your analysis and the reasoning for the trade signal.",
-          "entryPrice": "A suggested entry price, formatted as a string like '$XXXX.XX'.",
-          "takeProfit": "A suggested take-profit price, formatted as a string like '$XXXX.XX'.",
-          "stopLoss": "A suggested stop-loss price, formatted as a string like '$XXXX.XX'."
+          "description": "A concise technical analysis summary, mentioning the identified patterns and their implications for the potential trade.",
+          "entryPrice": "A precise suggested entry price, formatted as a string like '$XXXX.XX'.",
+          "takeProfit": "A suggested take-profit level based on key resistance or a favorable risk/reward ratio, formatted as a string like '$XXXX.XX'.",
+          "stopLoss": "A suggested stop-loss level based on key support or pattern invalidation, formatted as a string like '$XXXX.XX'."
         }
     `;
 

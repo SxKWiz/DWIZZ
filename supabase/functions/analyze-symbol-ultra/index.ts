@@ -25,21 +25,28 @@ async function performUltraAnalysisWithGemini(chartData: CandlestickData[], symb
     const recentData = chartData.slice(-90);
 
     const prompt = `
-        You are a world-class quantitative crypto trading analyst. Perform an in-depth, "ultra" analysis of the following recent candlestick data for the symbol ${symbol}.
-        Consider momentum, volatility, recent trends, and key support/resistance levels implied by the data.
-        Provide a detailed analysis, a potential trade signal, and a confidence score. The analysis is for educational purposes only and not financial advice.
+        You are a senior quantitative trading analyst at a top-tier hedge fund, specializing in algorithmic strategies for cryptocurrency markets. Your task is to conduct a comprehensive, institutional-grade technical analysis on the provided candlestick data for ${symbol}.
 
-        Candlestick Data (UTC Timestamp, Open, High, Low, Close):
+        **Comprehensive Analysis Requirements:**
+        1.  **Multi-faceted Pattern Recognition:** Identify dominant chart patterns (e.g., Head and Shoulders, Triangles, Channels, Flags) and significant multi-candlestick patterns (e.g., Three White Soldiers, Evening Star).
+        2.  **Contextual Interpretation:** Analyze the identified patterns in the context of the broader market structure, including prevailing trends, key support and resistance zones, and volume profile indications (if inferable).
+        3.  **Confluence Factors:** Look for confluence, where multiple technical indicators or patterns point to the same conclusion.
+        4.  **Hypothesis Formulation:** Formulate a primary trading hypothesis (e.g., "bullish continuation," "bearish reversal") based on the evidence.
+        5.  **Actionable Trade Plan:** Develop a clear, actionable trade plan with precise entry, take-profit, and stop-loss levels. The plan must be justified by the analysis.
+        6.  **Confidence Assessment:** Provide a quantitative confidence score based on the strength and confluence of the technical signals.
+        7.  **Strict JSON Output:** The entire response must be a single, valid JSON object with no additional text, comments, or markdown.
+
+        **Candlestick Data (Last 90 periods - UTC Timestamp, Open, High, Low, Close):**
         ${recentData.map(d => `[${d.time}, ${d.open}, ${d.high}, ${d.low}, ${d.close}]`).join('\n')}
 
-        Based on your comprehensive analysis, provide a response in the following JSON format ONLY. Do not include any other text, explanations, or markdown formatting.
+        **Required JSON Format:**
         {
-          "description": "A detailed summary of your analysis, including the factors you considered (volatility, trend, etc.) and the reasoning for the trade signal.",
-          "entryPrice": "A suggested entry price, formatted as a string like '$XXXX.XX'.",
-          "takeProfit": "A suggested take-profit price based on a reasonable risk/reward ratio, formatted as a string like '$XXXX.XX'.",
-          "stopLoss": "A suggested stop-loss price based on recent price action, formatted as a string like '$XXXX.XX'.",
-          "confidence": "Your confidence in this trade signal, formatted as a string like 'XX.X%'.",
-          "summary": "A very brief, one-sentence summary of the trade signal and your confidence."
+          "description": "A detailed, professional-grade technical analysis. Start with the primary trading hypothesis. Then, detail the specific chart and candlestick patterns identified, explaining how they support the hypothesis. Mention key support/resistance levels and any confluence factors observed.",
+          "entryPrice": "A precise suggested entry price, justified by a specific technical level (e.g., breakout confirmation, retest of support), formatted as a string like '$XXXX.XX'.",
+          "takeProfit": "A suggested take-profit level, justified by the next major resistance, a pattern's measured move, or a specific risk/reward ratio (e.g., 2:1), formatted as a string like '$XXXX.XX'.",
+          "stopLoss": "A suggested stop-loss level, justified by the invalidation point of the primary pattern or a key structural level, formatted as a string like '$XXXX.XX'.",
+          "confidence": "Your confidence in this trade setup, based on the quality and confluence of signals, formatted as a string like 'XX.X%'.",
+          "summary": "A concise, one-sentence executive summary of the trade plan (e.g., 'Initiate long position on a breakout above key resistance with a target at the next structural high.')."
         }
     `;
 
