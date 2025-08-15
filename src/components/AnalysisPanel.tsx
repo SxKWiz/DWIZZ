@@ -5,29 +5,39 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from '@/components/ui/skeleton';
 import { Wand2 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { showError, showSuccess } from '@/utils/toast';
 
 type AnalysisMode = 'normal' | 'ultra';
 
-const AnalysisResultDisplay = () => (
+type AnalysisResult = {
+    description: string;
+    entryPrice: string;
+    takeProfit: string;
+    stopLoss: string;
+};
+
+const AnalysisResultDisplay = ({ result }: { result: AnalysisResult }) => (
     <div className="prose prose-sm dark:prose-invert max-w-none">
-        <p>Based on the multi-timeframe analysis, the current market structure for BTC/USDT appears to be consolidating within a bullish trend. Key support is identified near the $67,000 level, with resistance at $72,000.</p>
+        <p>{result.description}</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 not-prose">
             <Card>
                 <CardHeader className="p-4">
                     <CardDescription>Entry Price</CardDescription>
-                    <CardTitle className="text-xl">$68,000 - $68,500</CardTitle>
+                    <CardTitle className="text-xl">{result.entryPrice}</CardTitle>
                 </CardHeader>
             </Card>
             <Card>
                 <CardHeader className="p-4">
                     <CardDescription>Take Profit</CardDescription>
-                    <CardTitle className="text-xl">$72,000</CardTitle>
+                    <CardTitle className="text-xl">{result.takeProfit}</CardTitle>
                 </CardHeader>
             </Card>
             <Card>
                 <CardHeader className="p-4">
                     <CardDescription>Stop Loss</CardDescription>
-                    <CardTitle className="text-xl">$67,000</CardTitle>
+                    <CardTitle className="text-xl">{result.stopLoss}</CardTitle>
                 </CardHeader>
             </Card>
         </div>
@@ -37,15 +47,41 @@ const AnalysisResultDisplay = () => (
 const AnalysisPanel = () => {
     const [mode, setMode] = useState<AnalysisMode>('normal');
     const [loading, setLoading] = useState(false);
-    const [showResult, setShowResult] = useState(false);
+    const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+    const { user } = useAuth();
 
     const handleAnalyze = () => {
         setLoading(true);
-        setShowResult(false);
+        setAnalysisResult(null);
         // Simulate AI analysis API call
-        setTimeout(() => {
-            setShowResult(true);
+        setTimeout(async () => {
+            const resultData: AnalysisResult = {
+                description: "Based on the multi-timeframe analysis, the current market structure for BTC/USDT appears to be consolidating within a bullish trend. Key support is identified near the $67,000 level, with resistance at $72,000.",
+                entryPrice: "$68,000 - $68,500",
+                takeProfit: "$72,000",
+                stopLoss: "$67,000"
+            };
+            
+            setAnalysisResult(resultData);
             setLoading(false);
+
+            if (user) {
+                const { error } = await supabase
+                    .from('analysis_history')
+                    .insert({
+                        user_id: user.id,
+                        symbol: 'BTC/USDT',
+                        mode: mode,
+                        result: resultData
+                    });
+
+                if (error) {
+                    showError('Failed to save analysis history.');
+                    console.error('Error saving analysis:', error);
+                } else {
+                    showSuccess('Analysis saved to history.');
+                }
+            }
         }, 1500);
     };
 
@@ -87,8 +123,8 @@ const AnalysisPanel = () => {
                             <Skeleton className="h-4 w-3/4" />
                         </div>
                     )}
-                    {showResult && !loading && <AnalysisResultDisplay />}
-                    {!showResult && !loading && (
+                    {analysisResult && !loading && <AnalysisResultDisplay result={analysisResult} />}
+                    {!analysisResult && !loading && (
                         <p className="text-sm text-muted-foreground">Click "Analyze Chart" to see the AI's insights.</p>
                     )}
                 </div>
