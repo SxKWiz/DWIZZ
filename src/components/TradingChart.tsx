@@ -4,6 +4,21 @@ import { AnalysisResult } from './AnalysisResultDisplay';
 
 export type ChartData = LightweightCharts.CandlestickData;
 
+// Helper function to get and format CSS variables for the chart
+const getChartColors = (element: HTMLElement) => {
+    const computedStyle = getComputedStyle(element);
+    const formatColor = (variable: string) => `hsl(${computedStyle.getPropertyValue(variable).trim().replace(/ /g, ', ')})`;
+    
+    return {
+        textColor: formatColor('--foreground'),
+        borderColor: formatColor('--border'),
+        primaryColor: formatColor('--primary'),
+        greenColor: 'hsl(142.1, 76.2%, 36.3%)',
+        redColor: 'hsl(0, 84.2%, 60.2%)',
+        yellowColor: 'hsl(38.5, 95.6%, 58.6%)',
+    };
+};
+
 export const TradingChart = ({ data, analysisResult }: { data: ChartData[], analysisResult: AnalysisResult | null }) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartInstanceRef = useRef<LightweightCharts.IChartApi | null>(null);
@@ -22,24 +37,26 @@ export const TradingChart = ({ data, analysisResult }: { data: ChartData[], anal
             chartInstanceRef.current.remove();
         }
 
+        const colors = getChartColors(chartContainerRef.current);
+
         const chart = LightweightCharts.createChart(chartContainerRef.current, {
             layout: {
                 background: { type: LightweightCharts.ColorType.Solid, color: 'transparent' },
-                textColor: 'hsl(var(--foreground))',
+                textColor: colors.textColor,
             },
             grid: {
-                vertLines: { color: 'hsl(var(--border))' },
-                horzLines: { color: 'hsl(var(--border))' },
+                vertLines: { color: colors.borderColor },
+                horzLines: { color: colors.borderColor },
             },
             width: chartContainerRef.current.clientWidth,
             height: 500,
             rightPriceScale: {
                 visible: true,
-                borderColor: 'hsl(var(--border))',
+                borderColor: colors.borderColor,
             },
             timeScale: {
                 visible: true,
-                borderColor: 'hsl(var(--border))',
+                borderColor: colors.borderColor,
             },
         });
         chartInstanceRef.current = chart;
@@ -78,7 +95,7 @@ export const TradingChart = ({ data, analysisResult }: { data: ChartData[], anal
         const chart = chartInstanceRef.current;
         const series = seriesRef.current;
 
-        if (!chart || !series) return;
+        if (!chart || !series || !chartContainerRef.current) return;
 
         // Clear previous drawings
         priceLinesRef.current.forEach(line => series.removePriceLine(line));
@@ -92,6 +109,8 @@ export const TradingChart = ({ data, analysisResult }: { data: ChartData[], anal
             return;
         }
 
+        const colors = getChartColors(chartContainerRef.current);
+
         // Draw Price Lines for Entry, TP, SL
         const entryPrice = parseFloat(analysisResult.entryPrice.replace(/[^0-9.-]+/g, ""));
         const takeProfit = parseFloat(analysisResult.takeProfit.replace(/[^0-9.-]+/g, ""));
@@ -100,7 +119,7 @@ export const TradingChart = ({ data, analysisResult }: { data: ChartData[], anal
         if (!isNaN(entryPrice)) {
             priceLinesRef.current.push(series.createPriceLine({
                 price: entryPrice,
-                color: 'hsl(var(--primary))',
+                color: colors.primaryColor,
                 lineWidth: 2,
                 lineStyle: LightweightCharts.LineStyle.Dashed,
                 axisLabelVisible: true,
@@ -110,7 +129,7 @@ export const TradingChart = ({ data, analysisResult }: { data: ChartData[], anal
         if (!isNaN(takeProfit)) {
             priceLinesRef.current.push(series.createPriceLine({
                 price: takeProfit,
-                color: 'hsl(142.1 76.2% 36.3%)',
+                color: colors.greenColor,
                 lineWidth: 2,
                 lineStyle: LightweightCharts.LineStyle.Solid,
                 axisLabelVisible: true,
@@ -120,7 +139,7 @@ export const TradingChart = ({ data, analysisResult }: { data: ChartData[], anal
         if (!isNaN(stopLoss)) {
             priceLinesRef.current.push(series.createPriceLine({
                 price: stopLoss,
-                color: 'hsl(0 84.2% 60.2%)',
+                color: colors.redColor,
                 lineWidth: 2,
                 lineStyle: LightweightCharts.LineStyle.Solid,
                 axisLabelVisible: true,
@@ -133,7 +152,7 @@ export const TradingChart = ({ data, analysisResult }: { data: ChartData[], anal
             const trendline = analysisResult.drawings.find(d => d.type === 'trendline');
             if (trendline && trendline.points.length >= 2) {
                 const lineSeries = chart.addLineSeries({
-                    color: 'hsl(38.5 95.6% 58.6%)',
+                    color: colors.yellowColor,
                     lineWidth: 2,
                     lineStyle: LightweightCharts.LineStyle.Dotted,
                     lastValueVisible: false,
