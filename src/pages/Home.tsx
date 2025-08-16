@@ -248,7 +248,12 @@ const Home = () => {
                     {loadingChart ? (
                         <Skeleton className="h-[500px] w-full" />
                     ) : chartData.length > 0 ? (
-                        <TradingChart data={chartData} analysisResult={analysisResult} latestCandle={latestCandle} />
+                        <TradingChart
+                            data={chartData}
+                            analysisResult={analysisResult}
+                            latestCandle={latestCandle}
+                            triggeredAlerts={triggeredAlerts}
+                        />
                     ) : (
                         <div className="flex items-center justify-center h-[500px] text-muted-foreground">
                             No chart data available for {symbol}. Please check the symbol and try again.

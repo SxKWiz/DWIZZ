@@ -39,12 +39,28 @@ const getChartColors = (element: HTMLElement) => {
     };
 };
 
-export const TradingChart = ({ data, analysisResult, latestCandle }: { data: ChartData[], analysisResult: AnalysisResult | null, latestCandle: ChartData | null }) => {
+export const TradingChart = ({
+    data,
+    analysisResult,
+    latestCandle,
+    triggeredAlerts,
+}: {
+    data: ChartData[];
+    analysisResult: AnalysisResult | null;
+    latestCandle: ChartData | null;
+    triggeredAlerts: Set<string>;
+}) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartInstanceRef = useRef<LightweightCharts.IChartApi | null>(null);
-    const seriesRef = useRef<LightweightCharts.ISeriesApi<"Candlestick"> | null>(null);
-    const priceLinesRef = useRef<LightweightCharts.IPriceLine[]>([]);
+    const seriesRef = useRef<LightweightCharts.ISeriesApi<'Candlestick'> | null>(null);
+    
+    // Refs for the new signal visualization
     const trendLineSeriesRef = useRef<LightweightCharts.ISeriesApi<'Line'> | null>(null);
+    const entryLineRef = useRef<LightweightCharts.ISeriesApi<'Line'> | null>(null);
+    const tpLineRef = useRef<LightweightCharts.ISeriesApi<'Line'> | null>(null);
+    const slLineRef = useRef<LightweightCharts.ISeriesApi<'Line'> | null>(null);
+    const analysisTimeRef = useRef<LightweightCharts.UTCTimestamp | null>(null);
+    const tradeEndTimeRef = useRef<LightweightCharts.UTCTimestamp | null>(null);
 
     useEffect(() => {
         if (!chartContainerRef.current || data.length === 0) {
@@ -111,81 +127,115 @@ export const TradingChart = ({ data, analysisResult, latestCandle }: { data: Cha
         };
     }, [data]);
 
+    // Effect to draw and manage analysis visualizations
     useEffect(() => {
         const chart = chartInstanceRef.current;
-        const series = seriesRef.current;
+        if (!chart || !seriesRef.current || !chartContainerRef.current) return;
 
-        if (!chart || !series || !chartContainerRef.current) return;
-
-        // Clear previous drawings
-        priceLinesRef.current.forEach(line => series.removePriceLine(line));
-        priceLinesRef.current = [];
-        if (trendLineSeriesRef.current) {
-            chart.removeSeries(trendLineSeriesRef.current);
+        // --- Cleanup function to remove all previous drawings ---
+        const cleanupDrawings = () => {
+            if (entryLineRef.current) chart.removeSeries(entryLineRef.current);
+            if (tpLineRef.current) chart.removeSeries(tpLineRef.current);
+            if (slLineRef.current) chart.removeSeries(slLineRef.current);
+            if (trendLineSeriesRef.current) chart.removeSeries(trendLineSeriesRef.current);
+            entryLineRef.current = null;
+            tpLineRef.current = null;
+            slLineRef.current = null;
             trendLineSeriesRef.current = null;
-        }
+            analysisTimeRef.current = null;
+            tradeEndTimeRef.current = null;
+        };
 
-        if (!analysisResult) {
+        cleanupDrawings();
+
+        if (!analysisResult || data.length === 0) {
             return;
         }
 
+        // --- Setup new line series for the trade signal ---
         const colors = getChartColors(chartContainerRef.current);
+        const lastCandleTime = data[data.length - 1].time as LightweightCharts.UTCTimestamp;
+        analysisTimeRef.current = lastCandleTime;
 
-        // Draw Price Lines for Entry, TP, SL
         const entryPrice = parseFloat(String(analysisResult.entryPrice).replace(/[^0-9.-]+/g, ""));
         const takeProfit = parseFloat(String(analysisResult.takeProfit).replace(/[^0-9.-]+/g, ""));
         const stopLoss = parseFloat(String(analysisResult.stopLoss).replace(/[^0-9.-]+/g, ""));
 
-        if (!isNaN(entryPrice)) {
-            priceLinesRef.current.push(series.createPriceLine({
-                price: entryPrice,
-                color: colors.primaryColor,
-                lineWidth: 2,
-                lineStyle: LightweightCharts.LineStyle.Dashed,
-                axisLabelVisible: true,
-                title: 'Entry',
-            }));
-        }
+        const commonLineOptions = {
+            lastValueVisible: false,
+            priceLineVisible: false,
+            crosshairMarkerVisible: false,
+            lineWidth: 2,
+        } as const;
+
+        // Create Take Profit line
         if (!isNaN(takeProfit)) {
-            priceLinesRef.current.push(series.createPriceLine({
-                price: takeProfit,
-                color: colors.greenColor,
-                lineWidth: 2,
-                lineStyle: LightweightCharts.LineStyle.Solid,
-                axisLabelVisible: true,
-                title: 'Take Profit',
-            }));
-        }
-        if (!isNaN(stopLoss)) {
-            priceLinesRef.current.push(series.createPriceLine({
-                price: stopLoss,
-                color: colors.redColor,
-                lineWidth: 2,
-                lineStyle: LightweightCharts.LineStyle.Solid,
-                axisLabelVisible: true,
-                title: 'Stop Loss',
-            }));
+            tpLineRef.current = chart.addLineSeries({ ...commonLineOptions, color: colors.greenColor });
+            tpLineRef.current.setData([{ time: lastCandleTime, value: takeProfit }]);
         }
 
-        // Draw Trendlines
+        // Create Stop Loss line
+        if (!isNaN(stopLoss)) {
+            slLineRef.current = chart.addLineSeries({ ...commonLineOptions, color: colors.redColor });
+            slLineRef.current.setData([{ time: lastCandleTime, value: stopLoss }]);
+        }
+
+        // Create Entry line
+        if (!isNaN(entryPrice)) {
+            entryLineRef.current = chart.addLineSeries({ ...commonLineOptions, color: colors.primaryColor, lineStyle: LightweightCharts.LineStyle.Dashed });
+            entryLineRef.current.setData([{ time: lastCandleTime, value: entryPrice }]);
+        }
+
+        // Draw Trendlines from analysis
         if (analysisResult.drawings && Array.isArray(analysisResult.drawings)) {
             const trendline = analysisResult.drawings.find(d => d.type === 'trendline');
             if (trendline && trendline.points.length >= 2) {
-                const lineSeries = chart.addLineSeries({
+                trendLineSeriesRef.current = chart.addLineSeries({
                     color: colors.yellowColor,
                     lineWidth: 2,
                     lineStyle: LightweightCharts.LineStyle.Dotted,
                     lastValueVisible: false,
                     priceLineVisible: false,
                     crosshairMarkerVisible: false,
-                });
+                } as const);
                 const sortedPoints = [...trendline.points].sort((a, b) => a.time - b.time);
-                lineSeries.setData(sortedPoints.map(p => ({ time: p.time as LightweightCharts.UTCTimestamp, value: p.price })));
-                trendLineSeriesRef.current = lineSeries;
+                trendLineSeriesRef.current.setData(sortedPoints.map(p => ({ time: p.time as LightweightCharts.UTCTimestamp, value: p.price })));
             }
         }
-    }, [analysisResult]);
+    }, [analysisResult, data]);
 
+    // Effect to extend the lines with new candle data
+    useEffect(() => {
+        if (!analysisResult || !latestCandle || !analysisTimeRef.current) return;
+
+        // Check if trade has ended and lock the end time
+        if (!tradeEndTimeRef.current && (triggeredAlerts.has('tp') || triggeredAlerts.has('sl'))) {
+            tradeEndTimeRef.current = latestCandle.time as LightweightCharts.UTCTimestamp;
+        }
+
+        const startTime = analysisTimeRef.current;
+        const endTime = tradeEndTimeRef.current || (latestCandle.time as LightweightCharts.UTCTimestamp);
+
+        const entryPrice = parseFloat(String(analysisResult.entryPrice).replace(/[^0-9.-]+/g, ""));
+        const takeProfit = parseFloat(String(analysisResult.takeProfit).replace(/[^0-9.-]+/g, ""));
+        const stopLoss = parseFloat(String(analysisResult.stopLoss).replace(/[^0-9.-]+/g, ""));
+
+        const updateLine = (lineRef: React.RefObject<LightweightCharts.ISeriesApi<'Line'> | null>, price: number) => {
+            if (lineRef.current && !isNaN(price)) {
+                lineRef.current.setData([
+                    { time: startTime, value: price },
+                    { time: endTime, value: price },
+                ]);
+            }
+        };
+
+        updateLine(tpLineRef, takeProfit);
+        updateLine(slLineRef, stopLoss);
+        updateLine(entryLineRef, entryPrice);
+
+    }, [latestCandle, analysisResult, triggeredAlerts]);
+
+    // Effect to update the main candlestick series
     useEffect(() => {
         if (seriesRef.current && latestCandle) {
             seriesRef.current.update(latestCandle);
