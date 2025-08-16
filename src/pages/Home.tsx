@@ -40,6 +40,7 @@ const Home = () => {
     const [armedAnalysis, setArmedAnalysis] = useState<AnalysisResult | null>(null);
     const [latestCandle, setLatestCandle] = useState<ChartData | null>(null);
     const [triggeredAlerts, setTriggeredAlerts] = useState<Set<string>>(new Set());
+    const [isTradeEntered, setIsTradeEntered] = useState(false);
     const prevPriceRef = useRef<number | null>(null);
     const { user, profile } = useAuth();
 
@@ -126,6 +127,7 @@ const Home = () => {
     useEffect(() => {
         setTriggeredAlerts(new Set());
         prevPriceRef.current = null;
+        setIsTradeEntered(false);
     }, [armedAnalysis]);
 
     // Effect for price alert notifications
@@ -148,41 +150,64 @@ const Home = () => {
         const isLong = armedAnalysis.sentiment.toLowerCase().includes('bullish');
         const isShort = armedAnalysis.sentiment.toLowerCase().includes('bearish');
 
-        const checkAndNotify = (level: 'entry' | 'tp' | 'sl', price: number, message: string) => {
-            if (isNaN(price) || triggeredAlerts.has(level)) {
-                return;
-            }
-
-            let triggered = false;
-            if (isLong) {
-                if (level === 'entry' && prevPrice < price && currentPrice >= price) triggered = true;
-                if (level === 'tp' && currentPrice >= price) triggered = true;
-                if (level === 'sl' && currentPrice <= price) triggered = true;
-            } else if (isShort) {
-                if (level === 'entry' && prevPrice > price && currentPrice <= price) triggered = true;
-                if (level === 'tp' && currentPrice <= price) triggered = true;
-                if (level === 'sl' && currentPrice >= price) triggered = true;
-            }
-
-            if (triggered) {
-                showInfo(message);
-                setTriggeredAlerts(prev => new Set(prev).add(level));
-                if (user) {
-                    supabase.from('notifications').insert({ user_id: user.id, message }).then(({ error }) => {
-                        if (error) {
-                            console.error("Error saving notification:", error);
-                        }
-                    });
-                }
+        const saveNotification = (message: string) => {
+            if (user) {
+                supabase.from('notifications').insert({ user_id: user.id, message }).then(({ error }) => {
+                    if (error) {
+                        console.error("Error saving notification:", error);
+                    }
+                });
             }
         };
 
-        checkAndNotify('entry', entryPrice, `${symbol.replace('USDT', '/USDT')} has crossed the Entry Price at ${armedAnalysis.entryPrice}`);
-        checkAndNotify('tp', takeProfit, `${symbol.replace('USDT', '/USDT')} has reached the Take Profit level at ${armedAnalysis.takeProfit}`);
-        checkAndNotify('sl', stopLoss, `${symbol.replace('USDT', '/USDT')} has hit the Stop Loss level at ${armedAnalysis.stopLoss}`);
+        // 1. Check for Entry if not already entered
+        if (!isTradeEntered && !triggeredAlerts.has('entry') && !isNaN(entryPrice)) {
+            let entryTriggered = false;
+            if (isLong && prevPrice < entryPrice && currentPrice >= entryPrice) entryTriggered = true;
+            if (isShort && prevPrice > entryPrice && currentPrice <= entryPrice) entryTriggered = true;
+
+            if (entryTriggered) {
+                const message = `${symbol.replace('USDT', '/USDT')} has crossed the Entry Price at ${armedAnalysis.entryPrice}`;
+                showInfo(message);
+                setTriggeredAlerts(prev => new Set(prev).add('entry'));
+                setIsTradeEntered(true);
+                saveNotification(message);
+            }
+        }
+
+        // 2. Check for TP and SL only if trade is entered
+        if (isTradeEntered) {
+            // Check Take Profit
+            if (!triggeredAlerts.has('tp') && !isNaN(takeProfit)) {
+                let tpTriggered = false;
+                if (isLong && currentPrice >= takeProfit) tpTriggered = true;
+                if (isShort && currentPrice <= takeProfit) tpTriggered = true;
+
+                if (tpTriggered) {
+                    const message = `${symbol.replace('USDT', '/USDT')} has reached the Take Profit level at ${armedAnalysis.takeProfit}`;
+                    showInfo(message);
+                    setTriggeredAlerts(prev => new Set(prev).add('tp'));
+                    saveNotification(message);
+                }
+            }
+
+            // Check Stop Loss
+            if (!triggeredAlerts.has('sl') && !isNaN(stopLoss)) {
+                let slTriggered = false;
+                if (isLong && currentPrice <= stopLoss) slTriggered = true;
+                if (isShort && currentPrice >= stopLoss) slTriggered = true;
+
+                if (slTriggered) {
+                    const message = `${symbol.replace('USDT', '/USDT')} has hit the Stop Loss level at ${armedAnalysis.stopLoss}`;
+                    showInfo(message);
+                    setTriggeredAlerts(prev => new Set(prev).add('sl'));
+                    saveNotification(message);
+                }
+            }
+        }
 
         prevPriceRef.current = currentPrice;
-    }, [latestCandle, armedAnalysis, symbol, triggeredAlerts, profile, user]);
+    }, [latestCandle, armedAnalysis, symbol, triggeredAlerts, profile, user, isTradeEntered]);
 
     const handleSetAlerts = (result: AnalysisResult) => {
         setArmedAnalysis(result);
