@@ -22,7 +22,7 @@ export const TradingChart = ({ data }: { data: ChartData[] }) => {
 
         const chart = LightweightCharts.createChart(chartContainerRef.current, {
             layout: {
-                background: { type: LightweightCharts.ColorType.Solid, color: 'transparent' },
+                background: { type: LightweightCharts.ColorType.Solid, color: 'hsl(var(--muted))' },
                 textColor: 'hsl(var(--foreground))',
             },
             grid: {
