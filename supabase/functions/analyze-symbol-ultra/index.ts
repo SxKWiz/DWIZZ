@@ -43,9 +43,10 @@ async function performUltraAnalysisWithGemini(chartData: CandlestickData[], symb
         4.  **Risk Management & Contingency:**
             *   **Trade Management:** Outline a simple plan for managing the trade post-entry (e.g., "Move stop-loss to breakeven once price reaches...").
             *   **Alternative Scenario:** Briefly describe the alternative scenario if the primary hypothesis is invalidated.
-        5.  **Strict JSON Output:** The entire response must be a single, valid JSON object with no additional text, comments, or markdown.
+        5.  **Identify Drawable Patterns:** If you identify clear, significant patterns like trendlines, channels, or key horizontal levels, provide the coordinates for drawing them. The 'time' must be a UNIX timestamp (seconds) from the provided data.
+        6.  **Strict JSON Output:** The entire response must be a single, valid JSON object with no additional text, comments, or markdown.
 
-        **Candlestick Data (Last 90 periods - UTC Timestamp, Open, High, Low, Close):**
+        **Candlestick Data (Last 90 periods - UNIX Timestamp, Open, High, Low, Close):**
         ${recentData.map(d => `[${d.time}, ${d.open}, ${d.high}, ${d.low}, ${d.close}]`).join('\n')}
 
         **Required JSON Format:**
@@ -60,8 +61,20 @@ async function performUltraAnalysisWithGemini(chartData: CandlestickData[], symb
           "volatility": "The current volatility assessment (e.g., 'High', 'Low', 'Contracting'), as a string.",
           "riskRewardRatio": "The calculated risk/reward ratio for the trade, formatted as a string like 'X.XX:1'.",
           "tradeManagement": "A brief strategy for managing the trade after entry.",
-          "alternativeScenario": "A brief description of what might happen if the trade setup is invalidated."
+          "alternativeScenario": "A brief description of what might happen if the trade setup is invalidated.",
+          "drawings": [
+            {
+              "type": "trendline",
+              "points": [
+                { "time": 1672531200, "price": 20000.50 },
+                { "time": 1672617600, "price": 21000.75 }
+              ],
+              "label": "Primary Support Trendline"
+            }
+          ]
         }
+
+        The "drawings" array can be empty if no significant patterns are identified. Ensure all price values are numbers, not strings. The 'time' in the points must be a valid UNIX timestamp from the provided data.
     `;
 
     const response = await fetch(API_URL, {

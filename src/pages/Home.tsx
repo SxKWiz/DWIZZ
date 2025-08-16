@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
+import { AnalysisResult } from '@/components/AnalysisResultDisplay';
 
 const timeframeOptions = [
     { value: '1m', label: '1 Minute' },
@@ -33,6 +34,7 @@ const Home = () => {
     const [timeframe, setTimeframe] = useState('1d');
     const [chartData, setChartData] = useState<ChartData[]>([]);
     const [loadingChart, setLoadingChart] = useState(true);
+    const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -48,6 +50,7 @@ const Home = () => {
             if (!symbol) return;
 
             setLoadingChart(true);
+            setAnalysisResult(null); // Clear analysis when symbol changes
             try {
                 const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&limit=1000`);
                 if (!response.ok) {
@@ -113,7 +116,7 @@ const Home = () => {
                     {loadingChart ? (
                         <Skeleton className="h-[500px] w-full" />
                     ) : chartData.length > 0 ? (
-                        <TradingChart data={chartData} />
+                        <TradingChart data={chartData} analysisResult={analysisResult} />
                     ) : (
                         <div className="flex items-center justify-center h-[500px] text-muted-foreground">
                             No chart data available for {symbol}. Please check the symbol and try again.
@@ -121,7 +124,7 @@ const Home = () => {
                     )}
                 </CardContent>
             </Card>
-            <AnalysisPanel chartData={chartData} symbol={symbol} />
+            <AnalysisPanel chartData={chartData} symbol={symbol} onAnalysisComplete={setAnalysisResult} />
             <RecentHistory />
         </div>
     );

@@ -2,6 +2,17 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Badge } from './ui/badge';
 import { Zap, TrendingUp, TrendingDown, Minus, Activity, ShieldQuestion, ShieldCheck } from 'lucide-react';
 
+type DrawingPoint = {
+    time: number;
+    price: number;
+};
+
+type Drawing = {
+    type: 'trendline';
+    points: DrawingPoint[];
+    label: string;
+};
+
 export type BaseAnalysisResult = {
     description: string;
     entryPrice: string;
@@ -9,6 +20,7 @@ export type BaseAnalysisResult = {
     stopLoss: string;
     sentiment: string;
     riskRewardRatio: string;
+    drawings?: Drawing[];
 };
 
 export type UltraAnalysisResult = BaseAnalysisResult & {

@@ -18,7 +18,13 @@ const modeDescriptions: Record<AnalysisMode, string> = {
     ultra: 'Ultra mode conducts a deep, institutional-grade analysis of the broader market structure.'
 };
 
-const AnalysisPanel = ({ chartData, symbol }: { chartData: ChartData[], symbol: string }) => {
+interface AnalysisPanelProps {
+    chartData: ChartData[];
+    symbol: string;
+    onAnalysisComplete: (result: AnalysisResult | null) => void;
+}
+
+const AnalysisPanel = ({ chartData, symbol, onAnalysisComplete }: AnalysisPanelProps) => {
     const [mode, setMode] = useState<AnalysisMode>('normal');
     const [loading, setLoading] = useState(false);
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
@@ -31,6 +37,7 @@ const AnalysisPanel = ({ chartData, symbol }: { chartData: ChartData[], symbol: 
         }
         setLoading(true);
         setAnalysisResult(null);
+        onAnalysisComplete(null);
 
         const functionName = mode === 'ultra' ? 'analyze-symbol-ultra' : 'analyze-symbol';
 
@@ -44,6 +51,7 @@ const AnalysisPanel = ({ chartData, symbol }: { chartData: ChartData[], symbol: 
             }
             
             setAnalysisResult(resultData);
+            onAnalysisComplete(resultData);
 
             if (user) {
                 const { error: insertError } = await supabase

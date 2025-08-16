@@ -32,9 +32,10 @@ async function performAnalysisWithGemini(chartData: CandlestickData[], symbol: s
         2.  **Key Patterns:** Identify the most significant candlestick or simple chart pattern in the recent data.
         3.  **Formulate a Trade Signal:** Based on your analysis, provide a clear, actionable trade signal. This is for educational purposes and is not financial advice.
         4.  **Risk/Reward:** Calculate the risk/reward ratio for the proposed trade.
-        5.  **Strict JSON Output:** The entire response must be a single, valid JSON object with no additional text, comments, or markdown.
+        5.  **Identify Drawable Patterns:** If you identify a clear, simple pattern like a trendline (support or resistance), provide the coordinates for drawing it. The 'time' must be a UNIX timestamp (seconds) from the provided data.
+        6.  **Strict JSON Output:** The entire response must be a single, valid JSON object with no additional text, comments, or markdown.
 
-        **Candlestick Data (Last 30 periods - UTC Timestamp, Open, High, Low, Close):**
+        **Candlestick Data (Last 30 periods - UNIX Timestamp, Open, High, Low, Close):**
         ${recentData.map(d => `[${d.time}, ${d.open}, ${d.high}, ${d.low}, ${d.close}]`).join('\n')}
 
         **Required JSON Format:**
@@ -44,8 +45,20 @@ async function performAnalysisWithGemini(chartData: CandlestickData[], symbol: s
           "takeProfit": "A suggested take-profit level based on key resistance or a favorable risk/reward ratio, formatted as a string like '$XXXX.XX'.",
           "stopLoss": "A suggested stop-loss level based on key support or pattern invalidation, formatted as a string like '$XXXX.XX'.",
           "sentiment": "The immediate market sentiment (e.g., 'Bullish', 'Bearish', 'Neutral'), as a string.",
-          "riskRewardRatio": "The calculated risk/reward ratio for the trade, formatted as a string like 'X.XX:1'."
+          "riskRewardRatio": "The calculated risk/reward ratio for the trade, formatted as a string like 'X.XX:1'.",
+          "drawings": [
+            {
+              "type": "trendline",
+              "points": [
+                { "time": 1672531200, "price": 20000.50 },
+                { "time": 1672617600, "price": 21000.75 }
+              ],
+              "label": "Support Trendline"
+            }
+          ]
         }
+
+        The "drawings" array can be empty if no simple, clear pattern is identified. Ensure all price values are numbers, not strings. The 'time' in the points must be a valid UNIX timestamp from the provided data.
     `;
 
     const response = await fetch(API_URL, {
