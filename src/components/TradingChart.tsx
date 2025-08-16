@@ -219,6 +219,11 @@ export const TradingChart = ({
         const startTime = analysisTimeRef.current;
         const endTime = tradeEndTimeRef.current || (latestCandle.time as LightweightCharts.UTCTimestamp);
 
+        // Definitive fix: only update the line series if the new candle's time is after the analysis time.
+        if (endTime <= startTime) {
+            return;
+        }
+
         const entryPrice = parseFloat(String(analysisResult.entryPrice).replace(/[^0-9.-]+/g, ""));
         const takeProfit = parseFloat(String(analysisResult.takeProfit).replace(/[^0-9.-]+/g, ""));
         const stopLoss = parseFloat(String(analysisResult.stopLoss).replace(/[^0-9.-]+/g, ""));
