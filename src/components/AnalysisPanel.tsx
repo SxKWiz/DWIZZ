@@ -21,13 +21,14 @@ const modeDescriptions: Record<AnalysisMode, string> = {
 interface AnalysisPanelProps {
     chartData: ChartData[];
     symbol: string;
+    timeframe: string;
     onAnalysisComplete: (result: AnalysisResult | null) => void;
     onSetAlerts: (result: AnalysisResult) => void;
     onCancelAlerts: () => void;
     isAlertSet: boolean;
 }
 
-const AnalysisPanel = ({ chartData, symbol, onAnalysisComplete, onSetAlerts, onCancelAlerts, isAlertSet }: AnalysisPanelProps) => {
+const AnalysisPanel = ({ chartData, symbol, timeframe, onAnalysisComplete, onSetAlerts, onCancelAlerts, isAlertSet }: AnalysisPanelProps) => {
     const [mode, setMode] = useState<AnalysisMode>('normal');
     const [loading, setLoading] = useState(false);
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
@@ -63,7 +64,8 @@ const AnalysisPanel = ({ chartData, symbol, onAnalysisComplete, onSetAlerts, onC
                         user_id: user.id,
                         symbol: symbol,
                         mode: mode,
-                        result: resultData
+                        result: resultData,
+                        timeframe: timeframe
                     });
 
                 if (insertError) {

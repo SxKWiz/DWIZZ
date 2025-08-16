@@ -28,7 +28,8 @@ import {
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Trash2, Eye } from "lucide-react";
-import { AnalysisResult, AnalysisResultDisplay } from './AnalysisResultDisplay';
+import { AnalysisResult } from './AnalysisResultDisplay';
+import HistoryDetailView from './HistoryDetailView';
 
 export type AnalysisHistoryItem = {
     id: string;
@@ -36,6 +37,7 @@ export type AnalysisHistoryItem = {
     symbol: string;
     mode: string;
     result: AnalysisResult;
+    timeframe?: string;
 };
 
 interface HistoryItemCardProps {
@@ -79,14 +81,19 @@ export const HistoryItemCard = ({ item, onDelete }: HistoryItemCardProps) => {
                             View Details
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[625px]">
+                    <DialogContent className="sm:max-w-[800px]">
                         <DialogHeader>
                             <DialogTitle>Analysis Details</DialogTitle>
                             <DialogDescription>
                                 {item.symbol.replace('USDT', '/USDT')} analysis from {new Date(item.created_at).toLocaleString()}
                             </DialogDescription>
                         </DialogHeader>
-                        <AnalysisResultDisplay result={item.result} />
+                        <HistoryDetailView 
+                            symbol={item.symbol}
+                            timeframe={item.timeframe}
+                            createdAt={item.created_at}
+                            result={item.result}
+                        />
                     </DialogContent>
                 </Dialog>
                 <AlertDialog>

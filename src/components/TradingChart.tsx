@@ -50,11 +50,13 @@ export const TradingChart = ({
     analysisResult,
     latestCandle,
     triggeredAlerts,
+    height = 500,
 }: {
     data: ChartData[];
     analysisResult: AnalysisResult | null;
     latestCandle: ChartData | null;
     triggeredAlerts: Set<string>;
+    height?: number;
 }) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartInstanceRef = useRef<LightweightCharts.IChartApi | null>(null);
@@ -93,7 +95,7 @@ export const TradingChart = ({
                 horzLines: { color: colors.borderColor },
             },
             width: chartContainerRef.current.clientWidth,
-            height: 500,
+            height: height,
             rightPriceScale: {
                 visible: true,
                 borderColor: colors.borderColor,
@@ -133,7 +135,7 @@ export const TradingChart = ({
                 chartInstanceRef.current = null;
             }
         };
-    }, [data]);
+    }, [data, height]);
 
     useEffect(() => {
         const chart = chartInstanceRef.current;
@@ -273,7 +275,7 @@ export const TradingChart = ({
         }
     }, [latestCandle]);
 
-    return <div ref={chartContainerRef} className="w-full h-[500px]" />;
+    return <div ref={chartContainerRef} className="w-full" style={{ height: `${height}px` }} />;
 };
 
 export default TradingChart;

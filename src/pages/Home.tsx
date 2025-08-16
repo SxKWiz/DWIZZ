@@ -269,6 +269,7 @@ const Home = () => {
             <AnalysisPanel
                 chartData={chartData}
                 symbol={symbol}
+                timeframe={timeframe}
                 onAnalysisComplete={(result) => {
                     setAnalysisResult(result);
                     setArmedAnalysis(null);

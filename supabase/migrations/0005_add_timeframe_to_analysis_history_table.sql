@@ -1,0 +1,1 @@
+ALTER TABLE public.analysis_history ADD COLUMN timeframe TEXT;
