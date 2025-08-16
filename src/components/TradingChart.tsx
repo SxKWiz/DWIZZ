@@ -200,7 +200,8 @@ export const TradingChart = ({
                     priceLineVisible: false,
                     crosshairMarkerVisible: false,
                 } as const);
-                const sortedPoints = [...trendline.points].sort((a, b) => a.time - b.time);
+                const uniquePoints = Array.from(new Map(trendline.points.map(item => [item.time, item])).values());
+                const sortedPoints = uniquePoints.sort((a, b) => a.time - b.time);
                 trendLineSeriesRef.current.setData(sortedPoints.map(p => ({ time: p.time as LightweightCharts.UTCTimestamp, value: p.price })));
             }
         }
