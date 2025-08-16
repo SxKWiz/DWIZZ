@@ -40,8 +40,8 @@ const getChartColors = (element: HTMLElement) => {
         redColor: '#ef5350',
         yellowColor: '#FFEB3B',
         backgroundColor: backgroundColor, // Important for erasing fill
-        greenFillColor: 'rgba(38, 166, 154, 0.2)',
-        redFillColor: 'rgba(239, 83, 80, 0.2)',
+        greenFillColor: 'rgba(38, 166, 154, 0.4)',
+        redFillColor: 'rgba(239, 83, 80, 0.4)',
     };
 };
 
@@ -215,16 +215,22 @@ export const TradingChart = ({
     }, [analysisResult, data]);
 
     useEffect(() => {
-        if (!analysisResult || !latestCandle || !analysisTimeRef.current) return;
+        if (!analysisResult || !latestCandle || !analysisTimeRef.current || data.length < 2) return;
 
         if (!tradeEndTimeRef.current && (triggeredAlerts.has('tp') || triggeredAlerts.has('sl'))) {
             tradeEndTimeRef.current = latestCandle.time as LightweightCharts.UTCTimestamp;
         }
 
         const startTime = analysisTimeRef.current;
-        const endTime = tradeEndTimeRef.current || (latestCandle.time as LightweightCharts.UTCTimestamp);
+        const realEndTime = tradeEndTimeRef.current || (latestCandle.time as LightweightCharts.UTCTimestamp);
 
-        if (endTime <= startTime) return;
+        if (realEndTime <= startTime) return;
+
+        const interval = (data[data.length - 1].time as number) - (data[data.length - 2].time as number);
+        const projectionCandles = 150;
+        const projectedEndTime = (realEndTime as number) + (interval * projectionCandles);
+        
+        const endTime = (tradeEndTimeRef.current ? realEndTime : projectedEndTime) as LightweightCharts.UTCTimestamp;
 
         const entryPrice = parseFloat(String(analysisResult.entryPrice).replace(/[^0-9.-]+/g, ""));
         const takeProfit = parseFloat(String(analysisResult.takeProfit).replace(/[^0-9.-]+/g, ""));
@@ -254,7 +260,7 @@ export const TradingChart = ({
             updateRegion(tpRegionSeries.current, entryPrice, takeProfit);
             updateRegion(slRegionSeries.current, stopLoss, entryPrice);
         }
-    }, [latestCandle, analysisResult, triggeredAlerts]);
+    }, [latestCandle, analysisResult, triggeredAlerts, data]);
 
     useEffect(() => {
         if (seriesRef.current && latestCandle) {
