@@ -214,6 +214,11 @@ const Home = () => {
         showSuccess(`Price alerts for ${symbol.replace('USDT', '/USDT')} have been activated.`);
     };
 
+    const handleCancelAlerts = () => {
+        setArmedAnalysis(null);
+        showInfo(`Price alerts for ${symbol.replace('USDT', '/USDT')} have been deactivated.`);
+    };
+
     return (
         <div className="flex flex-1 flex-col gap-4">
             <Card>
@@ -269,6 +274,7 @@ const Home = () => {
                     setArmedAnalysis(null);
                 }}
                 onSetAlerts={handleSetAlerts}
+                onCancelAlerts={handleCancelAlerts}
                 isAlertSet={!!(armedAnalysis && analysisResult && armedAnalysis.entryPrice === analysisResult.entryPrice)}
             />
             <RecentHistory />

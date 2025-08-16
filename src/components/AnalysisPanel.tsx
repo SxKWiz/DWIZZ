@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Zap, BellRing } from 'lucide-react';
+import { Wand2, Zap, BellRing, BellOff } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
@@ -23,10 +23,11 @@ interface AnalysisPanelProps {
     symbol: string;
     onAnalysisComplete: (result: AnalysisResult | null) => void;
     onSetAlerts: (result: AnalysisResult) => void;
+    onCancelAlerts: () => void;
     isAlertSet: boolean;
 }
 
-const AnalysisPanel = ({ chartData, symbol, onAnalysisComplete, onSetAlerts, isAlertSet }: AnalysisPanelProps) => {
+const AnalysisPanel = ({ chartData, symbol, onAnalysisComplete, onSetAlerts, onCancelAlerts, isAlertSet }: AnalysisPanelProps) => {
     const [mode, setMode] = useState<AnalysisMode>('normal');
     const [loading, setLoading] = useState(false);
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
@@ -128,12 +129,21 @@ const AnalysisPanel = ({ chartData, symbol, onAnalysisComplete, onSetAlerts, isA
                         <>
                             <AnalysisResultDisplay result={analysisResult} />
                             <div className="pt-4">
-                                <Button onClick={() => onSetAlerts(analysisResult)} disabled={isAlertSet}>
-                                    <BellRing className="mr-2 h-4 w-4" />
-                                    {isAlertSet ? 'Alerts Activated' : 'Activate Price Alerts'}
-                                </Button>
+                                {isAlertSet ? (
+                                    <Button onClick={onCancelAlerts} variant="destructive">
+                                        <BellOff className="mr-2 h-4 w-4" />
+                                        Cancel Price Alerts
+                                    </Button>
+                                ) : (
+                                    <Button onClick={() => onSetAlerts(analysisResult)}>
+                                        <BellRing className="mr-2 h-4 w-4" />
+                                        Activate Price Alerts
+                                    </Button>
+                                )}
                                 <p className="text-xs text-muted-foreground mt-2">
-                                    Activate to receive notifications for Entry, Take Profit, and Stop Loss levels.
+                                    {isAlertSet
+                                        ? 'Notifications for this analysis are currently active.'
+                                        : 'Activate to receive notifications for Entry, Take Profit, and Stop Loss levels.'}
                                 </p>
                             </div>
                         </>
