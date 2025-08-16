@@ -67,7 +67,9 @@ export const TradingChart = ({
             return;
         }
 
-        const sortedData = [...data].sort((a, b) => (a.time as number) - (b.time as number));
+        // Sanitize and sort data: remove duplicates and ensure ascending order by time.
+        const uniqueData = Array.from(new Map(data.map(item => [item.time, item])).values());
+        const sortedData = uniqueData.sort((a, b) => (a.time as number) - (b.time as number));
 
         if (chartInstanceRef.current) {
             chartInstanceRef.current.remove();
