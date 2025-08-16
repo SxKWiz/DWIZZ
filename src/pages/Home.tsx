@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import TradingChart, { ChartData } from '@/components/TradingChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { showError } from '@/utils/toast';
+import { showError, showInfo } from '@/utils/toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import AnalysisPanel from '@/components/AnalysisPanel';
 import * as LightweightCharts from 'lightweight-charts';
@@ -36,6 +36,8 @@ const Home = () => {
     const [loadingChart, setLoadingChart] = useState(true);
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
     const [latestCandle, setLatestCandle] = useState<ChartData | null>(null);
+    const [triggeredAlerts, setTriggeredAlerts] = useState<Set<string>>(new Set());
+    const prevPriceRef = useRef<number | null>(null);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -114,6 +116,61 @@ const Home = () => {
             socket.close();
         };
     }, [symbol, timeframe, loadingChart]);
+
+    // Effect to reset alerts when a new analysis is generated or symbol changes
+    useEffect(() => {
+        setTriggeredAlerts(new Set());
+        prevPriceRef.current = null;
+    }, [analysisResult]);
+
+    // Effect for price alert notifications
+    useEffect(() => {
+        if (!latestCandle || !analysisResult) {
+            return;
+        }
+
+        const currentPrice = latestCandle.close;
+        const prevPrice = prevPriceRef.current;
+
+        if (prevPrice === null) {
+            prevPriceRef.current = currentPrice;
+            return;
+        }
+
+        const entryPrice = parseFloat(analysisResult.entryPrice.replace(/[^0-9.-]+/g, ""));
+        const takeProfit = parseFloat(analysisResult.takeProfit.replace(/[^0-9.-]+/g, ""));
+        const stopLoss = parseFloat(analysisResult.stopLoss.replace(/[^0-9.-]+/g, ""));
+        const isLong = analysisResult.sentiment.toLowerCase().includes('bullish');
+        const isShort = analysisResult.sentiment.toLowerCase().includes('bearish');
+
+        const checkAndNotify = (level: 'entry' | 'tp' | 'sl', price: number, message: string) => {
+            if (isNaN(price) || triggeredAlerts.has(level)) {
+                return;
+            }
+
+            let triggered = false;
+            if (isLong) {
+                if (level === 'entry' && prevPrice < price && currentPrice >= price) triggered = true;
+                if (level === 'tp' && currentPrice >= price) triggered = true;
+                if (level === 'sl' && currentPrice <= price) triggered = true;
+            } else if (isShort) {
+                if (level === 'entry' && prevPrice > price && currentPrice <= price) triggered = true;
+                if (level === 'tp' && currentPrice <= price) triggered = true;
+                if (level === 'sl' && currentPrice >= price) triggered = true;
+            }
+
+            if (triggered) {
+                showInfo(message);
+                setTriggeredAlerts(prev => new Set(prev).add(level));
+            }
+        };
+
+        checkAndNotify('entry', entryPrice, `${symbol.replace('USDT', '/USDT')} has crossed the Entry Price at ${analysisResult.entryPrice}`);
+        checkAndNotify('tp', takeProfit, `${symbol.replace('USDT', '/USDT')} has reached the Take Profit level at ${analysisResult.takeProfit}`);
+        checkAndNotify('sl', stopLoss, `${symbol.replace('USDT', '/USDT')} has hit the Stop Loss level at ${analysisResult.stopLoss}`);
+
+        prevPriceRef.current = currentPrice;
+    }, [latestCandle, analysisResult, symbol, triggeredAlerts]);
 
     return (
         <div className="flex flex-1 flex-col gap-4">
