@@ -132,9 +132,9 @@ export const TradingChart = ({ data, analysisResult, latestCandle }: { data: Cha
         const colors = getChartColors(chartContainerRef.current);
 
         // Draw Price Lines for Entry, TP, SL
-        const entryPrice = parseFloat(analysisResult.entryPrice.replace(/[^0-9.-]+/g, ""));
-        const takeProfit = parseFloat(analysisResult.takeProfit.replace(/[^0-9.-]+/g, ""));
-        const stopLoss = parseFloat(analysisResult.stopLoss.replace(/[^0-9.-]+/g, ""));
+        const entryPrice = parseFloat(String(analysisResult.entryPrice).replace(/[^0-9.-]+/g, ""));
+        const takeProfit = parseFloat(String(analysisResult.takeProfit).replace(/[^0-9.-]+/g, ""));
+        const stopLoss = parseFloat(String(analysisResult.stopLoss).replace(/[^0-9.-]+/g, ""));
 
         if (!isNaN(entryPrice)) {
             priceLinesRef.current.push(series.createPriceLine({

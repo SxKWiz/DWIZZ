@@ -142,9 +142,9 @@ const Home = () => {
             return;
         }
 
-        const entryPrice = parseFloat(armedAnalysis.entryPrice.replace(/[^0-9.-]+/g, ""));
-        const takeProfit = parseFloat(armedAnalysis.takeProfit.replace(/[^0-9.-]+/g, ""));
-        const stopLoss = parseFloat(armedAnalysis.stopLoss.replace(/[^0-9.-]+/g, ""));
+        const entryPrice = parseFloat(String(armedAnalysis.entryPrice).replace(/[^0-9.-]+/g, ""));
+        const takeProfit = parseFloat(String(armedAnalysis.takeProfit).replace(/[^0-9.-]+/g, ""));
+        const stopLoss = parseFloat(String(armedAnalysis.stopLoss).replace(/[^0-9.-]+/g, ""));
         const isLong = armedAnalysis.sentiment.toLowerCase().includes('bullish');
         const isShort = armedAnalysis.sentiment.toLowerCase().includes('bearish');
 
