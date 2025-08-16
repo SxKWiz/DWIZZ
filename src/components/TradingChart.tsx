@@ -29,13 +29,19 @@ const getChartColors = (element: HTMLElement) => {
         return hslToRgb(h, s, l);
     };
     
+    const rgbString = resolveVarToRgb('--background');
+    const backgroundColor = `rgba(${rgbString.match(/\d+/g)?.join(', ')}, 1)`;
+
     return {
         textColor: resolveVarToRgb('--foreground'),
         borderColor: resolveVarToRgb('--border'),
         primaryColor: resolveVarToRgb('--primary'),
-        greenColor: '#26a69a', // Use safe hex for candlestick colors
-        redColor: '#ef5350',   // Use safe hex for candlestick colors
-        yellowColor: '#FFEB3B', // Use safe hex for trendlines to avoid parsing errors
+        greenColor: '#26a69a',
+        redColor: '#ef5350',
+        yellowColor: '#FFEB3B',
+        backgroundColor: backgroundColor, // Important for erasing fill
+        greenFillColor: 'rgba(38, 166, 154, 0.2)',
+        redFillColor: 'rgba(239, 83, 80, 0.2)',
     };
 };
 
@@ -54,20 +60,20 @@ export const TradingChart = ({
     const chartInstanceRef = useRef<LightweightCharts.IChartApi | null>(null);
     const seriesRef = useRef<LightweightCharts.ISeriesApi<'Candlestick'> | null>(null);
     
-    // Refs for the new signal visualization
     const trendLineSeriesRef = useRef<LightweightCharts.ISeriesApi<'Line'> | null>(null);
     const entryLineRef = useRef<LightweightCharts.ISeriesApi<'Line'> | null>(null);
     const tpLineRef = useRef<LightweightCharts.ISeriesApi<'Line'> | null>(null);
     const slLineRef = useRef<LightweightCharts.ISeriesApi<'Line'> | null>(null);
     const analysisTimeRef = useRef<LightweightCharts.UTCTimestamp | null>(null);
     const tradeEndTimeRef = useRef<LightweightCharts.UTCTimestamp | null>(null);
+    const tpRegionSeries = useRef<LightweightCharts.ISeriesApi<'Area'>[]>([]);
+    const slRegionSeries = useRef<LightweightCharts.ISeriesApi<'Area'>[]>([]);
 
     useEffect(() => {
         if (!chartContainerRef.current || data.length === 0) {
             return;
         }
 
-        // Sanitize and sort data: remove duplicates and ensure ascending order by time.
         const uniqueData = Array.from(new Map(data.map(item => [item.time, item])).values());
         const sortedData = uniqueData.sort((a, b) => (a.time as number) - (b.time as number));
 
@@ -129,21 +135,23 @@ export const TradingChart = ({
         };
     }, [data]);
 
-    // Effect to draw and manage analysis visualizations
     useEffect(() => {
         const chart = chartInstanceRef.current;
         if (!chart || !seriesRef.current || !chartContainerRef.current) return;
 
-        // --- Cleanup function to remove all previous drawings ---
         const cleanupDrawings = () => {
             if (entryLineRef.current) chart.removeSeries(entryLineRef.current);
             if (tpLineRef.current) chart.removeSeries(tpLineRef.current);
             if (slLineRef.current) chart.removeSeries(slLineRef.current);
             if (trendLineSeriesRef.current) chart.removeSeries(trendLineSeriesRef.current);
+            tpRegionSeries.current.forEach(s => chart.removeSeries(s));
+            slRegionSeries.current.forEach(s => chart.removeSeries(s));
             entryLineRef.current = null;
             tpLineRef.current = null;
             slLineRef.current = null;
             trendLineSeriesRef.current = null;
+            tpRegionSeries.current = [];
+            slRegionSeries.current = [];
             analysisTimeRef.current = null;
             tradeEndTimeRef.current = null;
         };
@@ -154,7 +162,6 @@ export const TradingChart = ({
             return;
         }
 
-        // --- Setup new line series for the trade signal ---
         const colors = getChartColors(chartContainerRef.current);
         const lastCandleTime = data[data.length - 1].time as LightweightCharts.UTCTimestamp;
         analysisTimeRef.current = lastCandleTime;
@@ -163,43 +170,43 @@ export const TradingChart = ({
         const takeProfit = parseFloat(String(analysisResult.takeProfit).replace(/[^0-9.-]+/g, ""));
         const stopLoss = parseFloat(String(analysisResult.stopLoss).replace(/[^0-9.-]+/g, ""));
 
-        const commonLineOptions = {
-            lastValueVisible: false,
-            priceLineVisible: false,
-            crosshairMarkerVisible: false,
-            lineWidth: 2,
-        } as const;
-
-        // Create Take Profit line
+        const commonLineOptions = { lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false, lineWidth: 2 } as const;
         if (!isNaN(takeProfit)) {
             tpLineRef.current = chart.addLineSeries({ ...commonLineOptions, color: colors.greenColor });
             tpLineRef.current.setData([{ time: lastCandleTime, value: takeProfit }]);
         }
-
-        // Create Stop Loss line
         if (!isNaN(stopLoss)) {
             slLineRef.current = chart.addLineSeries({ ...commonLineOptions, color: colors.redColor });
             slLineRef.current.setData([{ time: lastCandleTime, value: stopLoss }]);
         }
-
-        // Create Entry line
         if (!isNaN(entryPrice)) {
             entryLineRef.current = chart.addLineSeries({ ...commonLineOptions, color: colors.primaryColor, lineStyle: LightweightCharts.LineStyle.Dashed });
             entryLineRef.current.setData([{ time: lastCandleTime, value: entryPrice }]);
         }
 
-        // Draw Trendlines from analysis
+        const commonAreaOptions = { lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false, lineColor: 'transparent', topColor: 'transparent' };
+        const createRegion = (topPrice: number, bottomPrice: number, fillColor: string): LightweightCharts.ISeriesApi<'Area'>[] => {
+            if (isNaN(topPrice) || isNaN(bottomPrice)) return [];
+            const fillSeries = chart.addAreaSeries({ ...commonAreaOptions, bottomColor: fillColor });
+            fillSeries.setData([{ time: lastCandleTime, value: topPrice }]);
+            const eraseSeries = chart.addAreaSeries({ ...commonAreaOptions, bottomColor: colors.backgroundColor });
+            eraseSeries.setData([{ time: lastCandleTime, value: bottomPrice }]);
+            return [fillSeries, eraseSeries];
+        };
+
+        const isLong = takeProfit > entryPrice;
+        if (isLong) {
+            tpRegionSeries.current = createRegion(takeProfit, entryPrice, colors.greenFillColor);
+            slRegionSeries.current = createRegion(entryPrice, stopLoss, colors.redFillColor);
+        } else {
+            tpRegionSeries.current = createRegion(entryPrice, takeProfit, colors.greenFillColor);
+            slRegionSeries.current = createRegion(stopLoss, entryPrice, colors.redFillColor);
+        }
+
         if (analysisResult.drawings && Array.isArray(analysisResult.drawings)) {
             const trendline = analysisResult.drawings.find(d => d.type === 'trendline');
             if (trendline && trendline.points.length >= 2) {
-                trendLineSeriesRef.current = chart.addLineSeries({
-                    color: colors.yellowColor,
-                    lineWidth: 2,
-                    lineStyle: LightweightCharts.LineStyle.Dotted,
-                    lastValueVisible: false,
-                    priceLineVisible: false,
-                    crosshairMarkerVisible: false,
-                } as const);
+                trendLineSeriesRef.current = chart.addLineSeries({ color: colors.yellowColor, lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Dotted, lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false } as const);
                 const uniquePoints = Array.from(new Map(trendline.points.map(item => [item.time, item])).values());
                 const sortedPoints = uniquePoints.sort((a, b) => a.time - b.time);
                 trendLineSeriesRef.current.setData(sortedPoints.map(p => ({ time: p.time as LightweightCharts.UTCTimestamp, value: p.price })));
@@ -207,11 +214,9 @@ export const TradingChart = ({
         }
     }, [analysisResult, data]);
 
-    // Effect to extend the lines with new candle data
     useEffect(() => {
         if (!analysisResult || !latestCandle || !analysisTimeRef.current) return;
 
-        // Check if trade has ended and lock the end time
         if (!tradeEndTimeRef.current && (triggeredAlerts.has('tp') || triggeredAlerts.has('sl'))) {
             tradeEndTimeRef.current = latestCandle.time as LightweightCharts.UTCTimestamp;
         }
@@ -219,10 +224,7 @@ export const TradingChart = ({
         const startTime = analysisTimeRef.current;
         const endTime = tradeEndTimeRef.current || (latestCandle.time as LightweightCharts.UTCTimestamp);
 
-        // Definitive fix: only update the line series if the new candle's time is after the analysis time.
-        if (endTime <= startTime) {
-            return;
-        }
+        if (endTime <= startTime) return;
 
         const entryPrice = parseFloat(String(analysisResult.entryPrice).replace(/[^0-9.-]+/g, ""));
         const takeProfit = parseFloat(String(analysisResult.takeProfit).replace(/[^0-9.-]+/g, ""));
@@ -230,20 +232,30 @@ export const TradingChart = ({
 
         const updateLine = (lineRef: React.RefObject<LightweightCharts.ISeriesApi<'Line'> | null>, price: number) => {
             if (lineRef.current && !isNaN(price)) {
-                lineRef.current.setData([
-                    { time: startTime, value: price },
-                    { time: endTime, value: price },
-                ]);
+                lineRef.current.setData([{ time: startTime, value: price }, { time: endTime, value: price }]);
             }
         };
-
         updateLine(tpLineRef, takeProfit);
         updateLine(slLineRef, stopLoss);
         updateLine(entryLineRef, entryPrice);
 
+        const updateRegion = (regionArr: LightweightCharts.ISeriesApi<'Area'>[], topPrice: number, bottomPrice: number) => {
+            if (regionArr.length !== 2 || isNaN(topPrice) || isNaN(bottomPrice)) return;
+            const [fillSeries, eraseSeries] = regionArr;
+            fillSeries.setData([{ time: startTime, value: topPrice }, { time: endTime, value: topPrice }]);
+            eraseSeries.setData([{ time: startTime, value: bottomPrice }, { time: endTime, value: bottomPrice }]);
+        };
+
+        const isLong = takeProfit > entryPrice;
+        if (isLong) {
+            updateRegion(tpRegionSeries.current, takeProfit, entryPrice);
+            updateRegion(slRegionSeries.current, entryPrice, stopLoss);
+        } else {
+            updateRegion(tpRegionSeries.current, entryPrice, takeProfit);
+            updateRegion(slRegionSeries.current, stopLoss, entryPrice);
+        }
     }, [latestCandle, analysisResult, triggeredAlerts]);
 
-    // Effect to update the main candlestick series
     useEffect(() => {
         if (seriesRef.current && latestCandle) {
             seriesRef.current.update(latestCandle);
