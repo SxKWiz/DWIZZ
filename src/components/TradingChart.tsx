@@ -39,7 +39,7 @@ const getChartColors = (element: HTMLElement) => {
     };
 };
 
-export const TradingChart = ({ data, analysisResult }: { data: ChartData[], analysisResult: AnalysisResult | null }) => {
+export const TradingChart = ({ data, analysisResult, latestCandle }: { data: ChartData[], analysisResult: AnalysisResult | null, latestCandle: ChartData | null }) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartInstanceRef = useRef<LightweightCharts.IChartApi | null>(null);
     const seriesRef = useRef<LightweightCharts.ISeriesApi<"Candlestick"> | null>(null);
@@ -185,6 +185,12 @@ export const TradingChart = ({ data, analysisResult }: { data: ChartData[], anal
             }
         }
     }, [analysisResult]);
+
+    useEffect(() => {
+        if (seriesRef.current && latestCandle) {
+            seriesRef.current.update(latestCandle);
+        }
+    }, [latestCandle]);
 
     return <div ref={chartContainerRef} className="w-full h-[500px]" />;
 };

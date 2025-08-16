@@ -35,12 +35,12 @@ const Home = () => {
     const [chartData, setChartData] = useState<ChartData[]>([]);
     const [loadingChart, setLoadingChart] = useState(true);
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+    const [latestCandle, setLatestCandle] = useState<ChartData | null>(null);
 
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
     useEffect(() => {
         if (debouncedSearchTerm) {
-            // Sanitize and uppercase the symbol before setting it
             setSymbol(debouncedSearchTerm.toUpperCase().replace(/[^A-Z0-9]/g, ''));
         }
     }, [debouncedSearchTerm]);
@@ -50,7 +50,8 @@ const Home = () => {
             if (!symbol) return;
 
             setLoadingChart(true);
-            setAnalysisResult(null); // Clear analysis when symbol changes
+            setAnalysisResult(null);
+            setLatestCandle(null);
             try {
                 const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&limit=1000`);
                 if (!response.ok) {
@@ -72,7 +73,7 @@ const Home = () => {
                 setChartData(formattedData);
             } catch (error) {
                 console.error("Error fetching chart data:", error);
-                setChartData([]); // Clear data on error
+                setChartData([]);
                 showError((error as Error).message || `Could not load data for ${symbol}.`);
             } finally {
                 setLoadingChart(false);
@@ -81,6 +82,38 @@ const Home = () => {
 
         fetchChartData();
     }, [symbol, timeframe]);
+
+    useEffect(() => {
+        if (!symbol || loadingChart) {
+            return;
+        }
+
+        const socket = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${timeframe}`);
+
+        socket.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            const candle = message.k;
+
+            if (candle) {
+                const newCandle: ChartData = {
+                    time: (candle.t / 1000) as LightweightCharts.UTCTimestamp,
+                    open: parseFloat(candle.o),
+                    high: parseFloat(candle.h),
+                    low: parseFloat(candle.l),
+                    close: parseFloat(candle.c),
+                };
+                setLatestCandle(newCandle);
+            }
+        };
+
+        socket.onerror = (error) => {
+            console.error('WebSocket Error:', error);
+        };
+
+        return () => {
+            socket.close();
+        };
+    }, [symbol, timeframe, loadingChart]);
 
     return (
         <div className="flex flex-1 flex-col gap-4">
@@ -116,7 +149,7 @@ const Home = () => {
                     {loadingChart ? (
                         <Skeleton className="h-[500px] w-full" />
                     ) : chartData.length > 0 ? (
-                        <TradingChart data={chartData} analysisResult={analysisResult} />
+                        <TradingChart data={chartData} analysisResult={analysisResult} latestCandle={latestCandle} />
                     ) : (
                         <div className="flex items-center justify-center h-[500px] text-muted-foreground">
                             No chart data available for {symbol}. Please check the symbol and try again.
