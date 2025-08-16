@@ -7,6 +7,7 @@ import AnalysisPanel from '@/components/AnalysisPanel';
 import * as LightweightCharts from 'lightweight-charts';
 import { Input } from '@/components/ui/input';
 import { useDebounce } from '@/hooks/use-debounce';
+import RecentHistory from '@/components/RecentHistory';
 
 const Home = () => {
     const [symbol, setSymbol] = useState('BTCUSDT');
@@ -85,6 +86,7 @@ const Home = () => {
                 </CardContent>
             </Card>
             <AnalysisPanel chartData={chartData} symbol={symbol} />
+            <RecentHistory />
         </div>
     );
 };
