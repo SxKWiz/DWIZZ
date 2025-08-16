@@ -22,7 +22,7 @@ export const TradingChart = ({ data }: { data: ChartData[] }) => {
 
         const chart = LightweightCharts.createChart(chartContainerRef.current, {
             layout: {
-                background: { type: LightweightCharts.ColorType.Solid, color: 'hsl(var(--muted))' },
+                background: { type: LightweightCharts.ColorType.Solid, color: 'transparent' },
                 textColor: 'hsl(var(--foreground))',
             },
             grid: {
@@ -31,6 +31,14 @@ export const TradingChart = ({ data }: { data: ChartData[] }) => {
             },
             width: chartContainerRef.current.clientWidth,
             height: 500,
+            rightPriceScale: {
+                visible: true,
+                borderColor: 'hsl(var(--border))',
+            },
+            timeScale: {
+                visible: true,
+                borderColor: 'hsl(var(--border))',
+            },
         });
         chartInstanceRef.current = chart;
 

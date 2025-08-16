@@ -49,7 +49,7 @@ const Home = () => {
 
             setLoadingChart(true);
             try {
-                const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&limit=500`);
+                const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&limit=1000`);
                 if (!response.ok) {
                     throw new Error('Failed to fetch data from Binance. The symbol may not exist.');
                 }
