@@ -25,28 +25,42 @@ async function performUltraAnalysisWithGemini(chartData: CandlestickData[], symb
     const recentData = chartData.slice(-90);
 
     const prompt = `
-        You are a senior quantitative trading analyst at a top-tier hedge fund, specializing in algorithmic strategies for cryptocurrency markets. Your task is to conduct a comprehensive, institutional-grade technical analysis on the provided candlestick data for ${symbol}.
+        You are a senior quantitative analyst at a top-tier investment bank. Your task is to conduct a comprehensive, institutional-grade technical analysis on the provided candlestick data for ${symbol}. Your analysis must be rigorous, data-driven, and devoid of emotion.
 
-        **Comprehensive Analysis Requirements:**
-        1.  **Multi-faceted Pattern Recognition:** Identify dominant chart patterns (e.g., Head and Shoulders, Triangles, Channels, Flags) and significant multi-candlestick patterns (e.g., Three White Soldiers, Evening Star).
-        2.  **Contextual Interpretation:** Analyze the identified patterns in the context of the broader market structure, including prevailing trends, key support and resistance zones, and volume profile indications (if inferable).
-        3.  **Confluence Factors:** Look for confluence, where multiple technical indicators or patterns point to the same conclusion.
-        4.  **Hypothesis Formulation:** Formulate a primary trading hypothesis (e.g., "bullish continuation," "bearish reversal") based on the evidence.
-        5.  **Actionable Trade Plan:** Develop a clear, actionable trade plan with precise entry, take-profit, and stop-loss levels. The plan must be justified by the analysis.
-        6.  **Confidence Assessment:** Provide a quantitative confidence score based on the strength and confluence of the technical signals.
-        7.  **Strict JSON Output:** The entire response must be a single, valid JSON object with no additional text, comments, or markdown.
+        **Comprehensive Analysis Protocol:**
+        1.  **Market Regime Analysis:**
+            *   **Sentiment:** Determine the dominant market sentiment (e.g., "Strong Bullish", "Bearish", "Ranging/Neutral").
+            *   **Volatility:** Assess the current volatility environment (e.g., "High", "Low", "Contracting").
+        2.  **Multi-Factor Technical Analysis:**
+            *   **Price Action & Structure:** Identify major market structures, key support/resistance levels, and trendlines.
+            *   **Chart & Candlestick Patterns:** Pinpoint dominant chart patterns (e.g., Head and Shoulders, Triangles) and significant candlestick formations.
+            *   **Indicator Inference:** Based on the price action, infer the likely state of key technical indicators (e.g., Moving Averages, RSI, MACD). For example, "Price is consistently closing above the inferred 50-period MA, suggesting a strong uptrend."
+        3.  **Trade Hypothesis & Execution Plan:**
+            *   **Primary Hypothesis:** Formulate a primary trading hypothesis with a clear directional bias.
+            *   **Execution Plan:** Develop a precise trade plan with entry, take-profit, and stop-loss levels justified by your analysis.
+            *   **Risk/Reward:** Calculate the risk/reward ratio for the proposed trade.
+            *   **Confidence Score:** Provide a quantitative confidence score based on the confluence of signals.
+        4.  **Risk Management & Contingency:**
+            *   **Trade Management:** Outline a simple plan for managing the trade post-entry (e.g., "Move stop-loss to breakeven once price reaches...").
+            *   **Alternative Scenario:** Briefly describe the alternative scenario if the primary hypothesis is invalidated.
+        5.  **Strict JSON Output:** The entire response must be a single, valid JSON object with no additional text, comments, or markdown.
 
         **Candlestick Data (Last 90 periods - UTC Timestamp, Open, High, Low, Close):**
         ${recentData.map(d => `[${d.time}, ${d.open}, ${d.high}, ${d.low}, ${d.close}]`).join('\n')}
 
         **Required JSON Format:**
         {
-          "description": "A detailed, professional-grade technical analysis. Start with the primary trading hypothesis. Then, detail the specific chart and candlestick patterns identified, explaining how they support the hypothesis. Mention key support/resistance levels and any confluence factors observed.",
-          "entryPrice": "A precise suggested entry price, justified by a specific technical level (e.g., breakout confirmation, retest of support), formatted as a string like '$XXXX.XX'.",
-          "takeProfit": "A suggested take-profit level, justified by the next major resistance, a pattern's measured move, or a specific risk/reward ratio (e.g., 2:1), formatted as a string like '$XXXX.XX'.",
-          "stopLoss": "A suggested stop-loss level, justified by the invalidation point of the primary pattern or a key structural level, formatted as a string like '$XXXX.XX'.",
-          "confidence": "Your confidence in this trade setup, based on the quality and confluence of signals, formatted as a string like 'XX.X%'.",
-          "summary": "A concise, one-sentence executive summary of the trade plan (e.g., 'Initiate long position on a breakout above key resistance with a target at the next structural high.')."
+          "summary": "A concise, one-sentence executive summary of the trade plan.",
+          "description": "A detailed, professional-grade technical analysis. Start with the primary hypothesis. Detail the patterns, market structure, and inferred indicator states that support it. Justify all key levels.",
+          "entryPrice": "A precise suggested entry price, justified by a specific technical event, formatted as a string like '$XXXX.XX'.",
+          "takeProfit": "A suggested take-profit level, justified by a major resistance or measured move, formatted as a string like '$XXXX.XX'.",
+          "stopLoss": "A suggested stop-loss level, justified by the invalidation point of the primary pattern, formatted as a string like '$XXXX.XX'.",
+          "confidence": "Your confidence in this trade setup, based on signal confluence, formatted as a string like 'XX.X%'.",
+          "sentiment": "The dominant market sentiment (e.g., 'Strong Bullish', 'Bearish', 'Ranging/Neutral'), as a string.",
+          "volatility": "The current volatility assessment (e.g., 'High', 'Low', 'Contracting'), as a string.",
+          "riskRewardRatio": "The calculated risk/reward ratio for the trade, formatted as a string like 'X.XX:1'.",
+          "tradeManagement": "A brief strategy for managing the trade after entry.",
+          "alternativeScenario": "A brief description of what might happen if the trade setup is invalidated."
         }
     `;
 
@@ -54,7 +68,10 @@ async function performUltraAnalysisWithGemini(chartData: CandlestickData[], symb
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }]
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+                temperature: 0,
+            }
         })
     });
 

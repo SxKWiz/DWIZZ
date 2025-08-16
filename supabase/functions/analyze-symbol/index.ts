@@ -25,23 +25,26 @@ async function performAnalysisWithGemini(chartData: CandlestickData[], symbol: s
     const recentData = chartData.slice(-30);
 
     const prompt = `
-        You are a professional quantitative trading analyst specializing in cryptocurrency markets. Your task is to perform a technical analysis on the provided candlestick data for ${symbol}.
+        You are a professional quantitative trading analyst specializing in cryptocurrency markets. Your task is to perform a technical analysis on the provided candlestick data for ${symbol}. Your analysis must be objective and data-driven.
 
         **Analysis Requirements:**
-        1.  **Identify Key Patterns:** Scan the data for significant candlestick patterns (e.g., Doji, Hammer, Engulfing patterns) and simple chart patterns (e.g., support/resistance flips, trendlines).
-        2.  **Interpret Implications:** Briefly explain what these patterns typically indicate in the context of the current market trend.
+        1.  **Market Sentiment:** Determine the immediate market sentiment (e.g., "Bullish", "Bearish", "Neutral") based on the most recent price action.
+        2.  **Key Patterns:** Identify the most significant candlestick or simple chart pattern in the recent data.
         3.  **Formulate a Trade Signal:** Based on your analysis, provide a clear, actionable trade signal. This is for educational purposes and is not financial advice.
-        4.  **Strict JSON Output:** The entire response must be a single, valid JSON object with no additional text, comments, or markdown.
+        4.  **Risk/Reward:** Calculate the risk/reward ratio for the proposed trade.
+        5.  **Strict JSON Output:** The entire response must be a single, valid JSON object with no additional text, comments, or markdown.
 
         **Candlestick Data (Last 30 periods - UTC Timestamp, Open, High, Low, Close):**
         ${recentData.map(d => `[${d.time}, ${d.open}, ${d.high}, ${d.low}, ${d.close}]`).join('\n')}
 
         **Required JSON Format:**
         {
-          "description": "A concise technical analysis summary, mentioning the identified patterns and their implications for the potential trade.",
+          "description": "A concise technical analysis summary, mentioning the identified pattern and its implications for the potential trade.",
           "entryPrice": "A precise suggested entry price, formatted as a string like '$XXXX.XX'.",
           "takeProfit": "A suggested take-profit level based on key resistance or a favorable risk/reward ratio, formatted as a string like '$XXXX.XX'.",
-          "stopLoss": "A suggested stop-loss level based on key support or pattern invalidation, formatted as a string like '$XXXX.XX'."
+          "stopLoss": "A suggested stop-loss level based on key support or pattern invalidation, formatted as a string like '$XXXX.XX'.",
+          "sentiment": "The immediate market sentiment (e.g., 'Bullish', 'Bearish', 'Neutral'), as a string.",
+          "riskRewardRatio": "The calculated risk/reward ratio for the trade, formatted as a string like 'X.XX:1'."
         }
     `;
 
@@ -49,7 +52,10 @@ async function performAnalysisWithGemini(chartData: CandlestickData[], symbol: s
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }]
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+                temperature: 0,
+            }
         })
     });
 
