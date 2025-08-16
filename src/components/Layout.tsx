@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/context/AuthContext";
 import { ThemeToggle } from "./ThemeToggle";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { NotificationCenter } from "./NotificationCenter";
 
 const navigationItems = [
   { to: "/", icon: Home, label: "Home" },
@@ -51,7 +52,10 @@ const DesktopLayout = () => {
           <NavLink to="/" className="flex items-center gap-2 font-semibold">
             <span className="">Crypto AI Analyzer</span>
           </NavLink>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <NotificationCenter />
+          </div>
         </div>
         <div className="flex-1">
           <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
@@ -117,7 +121,10 @@ const Layout = () => {
             <NavLink to="/" className="flex items-center gap-2 font-semibold">
                 <span className="">Crypto AI Analyzer</span>
             </NavLink>
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+                <ThemeToggle />
+                <NotificationCenter />
+            </div>
         </header>
         <main className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6 pb-20 md:pb-6">
           <Outlet />

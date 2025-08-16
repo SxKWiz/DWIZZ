@@ -8,6 +8,7 @@ export interface Profile {
     last_name: string | null;
     avatar_url: string | null;
     updated_at: string | null;
+    notifications_enabled: boolean;
 }
 
 interface AuthContextType {

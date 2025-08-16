@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import TradingChart, { ChartData } from '@/components/TradingChart';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { showError, showInfo } from '@/utils/toast';
+import { showError, showInfo, showSuccess } from '@/utils/toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import AnalysisPanel from '@/components/AnalysisPanel';
 import * as LightweightCharts from 'lightweight-charts';
@@ -17,6 +17,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { ChevronDown } from 'lucide-react';
 import { AnalysisResult } from '@/components/AnalysisResultDisplay';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 const timeframeOptions = [
     { value: '1m', label: '1 Minute' },
@@ -35,9 +37,11 @@ const Home = () => {
     const [chartData, setChartData] = useState<ChartData[]>([]);
     const [loadingChart, setLoadingChart] = useState(true);
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+    const [armedAnalysis, setArmedAnalysis] = useState<AnalysisResult | null>(null);
     const [latestCandle, setLatestCandle] = useState<ChartData | null>(null);
     const [triggeredAlerts, setTriggeredAlerts] = useState<Set<string>>(new Set());
     const prevPriceRef = useRef<number | null>(null);
+    const { user, profile } = useAuth();
 
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -53,6 +57,7 @@ const Home = () => {
 
             setLoadingChart(true);
             setAnalysisResult(null);
+            setArmedAnalysis(null);
             setLatestCandle(null);
             try {
                 const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&limit=1000`);
@@ -117,15 +122,15 @@ const Home = () => {
         };
     }, [symbol, timeframe, loadingChart]);
 
-    // Effect to reset alerts when a new analysis is generated or symbol changes
+    // Effect to reset alerts when a new analysis is generated
     useEffect(() => {
         setTriggeredAlerts(new Set());
         prevPriceRef.current = null;
-    }, [analysisResult]);
+    }, [armedAnalysis]);
 
     // Effect for price alert notifications
     useEffect(() => {
-        if (!latestCandle || !analysisResult) {
+        if (!latestCandle || !armedAnalysis || !profile?.notifications_enabled) {
             return;
         }
 
@@ -137,11 +142,11 @@ const Home = () => {
             return;
         }
 
-        const entryPrice = parseFloat(analysisResult.entryPrice.replace(/[^0-9.-]+/g, ""));
-        const takeProfit = parseFloat(analysisResult.takeProfit.replace(/[^0-9.-]+/g, ""));
-        const stopLoss = parseFloat(analysisResult.stopLoss.replace(/[^0-9.-]+/g, ""));
-        const isLong = analysisResult.sentiment.toLowerCase().includes('bullish');
-        const isShort = analysisResult.sentiment.toLowerCase().includes('bearish');
+        const entryPrice = parseFloat(armedAnalysis.entryPrice.replace(/[^0-9.-]+/g, ""));
+        const takeProfit = parseFloat(armedAnalysis.takeProfit.replace(/[^0-9.-]+/g, ""));
+        const stopLoss = parseFloat(armedAnalysis.stopLoss.replace(/[^0-9.-]+/g, ""));
+        const isLong = armedAnalysis.sentiment.toLowerCase().includes('bullish');
+        const isShort = armedAnalysis.sentiment.toLowerCase().includes('bearish');
 
         const checkAndNotify = (level: 'entry' | 'tp' | 'sl', price: number, message: string) => {
             if (isNaN(price) || triggeredAlerts.has(level)) {
@@ -162,15 +167,27 @@ const Home = () => {
             if (triggered) {
                 showInfo(message);
                 setTriggeredAlerts(prev => new Set(prev).add(level));
+                if (user) {
+                    supabase.from('notifications').insert({ user_id: user.id, message }).then(({ error }) => {
+                        if (error) {
+                            console.error("Error saving notification:", error);
+                        }
+                    });
+                }
             }
         };
 
-        checkAndNotify('entry', entryPrice, `${symbol.replace('USDT', '/USDT')} has crossed the Entry Price at ${analysisResult.entryPrice}`);
-        checkAndNotify('tp', takeProfit, `${symbol.replace('USDT', '/USDT')} has reached the Take Profit level at ${analysisResult.takeProfit}`);
-        checkAndNotify('sl', stopLoss, `${symbol.replace('USDT', '/USDT')} has hit the Stop Loss level at ${analysisResult.stopLoss}`);
+        checkAndNotify('entry', entryPrice, `${symbol.replace('USDT', '/USDT')} has crossed the Entry Price at ${armedAnalysis.entryPrice}`);
+        checkAndNotify('tp', takeProfit, `${symbol.replace('USDT', '/USDT')} has reached the Take Profit level at ${armedAnalysis.takeProfit}`);
+        checkAndNotify('sl', stopLoss, `${symbol.replace('USDT', '/USDT')} has hit the Stop Loss level at ${armedAnalysis.stopLoss}`);
 
         prevPriceRef.current = currentPrice;
-    }, [latestCandle, analysisResult, symbol, triggeredAlerts]);
+    }, [latestCandle, armedAnalysis, symbol, triggeredAlerts, profile, user]);
+
+    const handleSetAlerts = (result: AnalysisResult) => {
+        setArmedAnalysis(result);
+        showSuccess(`Price alerts for ${symbol.replace('USDT', '/USDT')} have been activated.`);
+    };
 
     return (
         <div className="flex flex-1 flex-col gap-4">
@@ -214,7 +231,16 @@ const Home = () => {
                     )}
                 </CardContent>
             </Card>
-            <AnalysisPanel chartData={chartData} symbol={symbol} onAnalysisComplete={setAnalysisResult} />
+            <AnalysisPanel
+                chartData={chartData}
+                symbol={symbol}
+                onAnalysisComplete={(result) => {
+                    setAnalysisResult(result);
+                    setArmedAnalysis(null);
+                }}
+                onSetAlerts={handleSetAlerts}
+                isAlertSet={!!(armedAnalysis && analysisResult && armedAnalysis.entryPrice === analysisResult.entryPrice)}
+            />
             <RecentHistory />
         </div>
     );

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from '@/components/ui/skeleton';
-import { Wand2, Zap } from 'lucide-react';
+import { Wand2, Zap, BellRing } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { showError, showSuccess } from '@/utils/toast';
@@ -22,9 +22,11 @@ interface AnalysisPanelProps {
     chartData: ChartData[];
     symbol: string;
     onAnalysisComplete: (result: AnalysisResult | null) => void;
+    onSetAlerts: (result: AnalysisResult) => void;
+    isAlertSet: boolean;
 }
 
-const AnalysisPanel = ({ chartData, symbol, onAnalysisComplete }: AnalysisPanelProps) => {
+const AnalysisPanel = ({ chartData, symbol, onAnalysisComplete, onSetAlerts, isAlertSet }: AnalysisPanelProps) => {
     const [mode, setMode] = useState<AnalysisMode>('normal');
     const [loading, setLoading] = useState(false);
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
@@ -122,7 +124,20 @@ const AnalysisPanel = ({ chartData, symbol, onAnalysisComplete }: AnalysisPanelP
                             <Skeleton className="h-4 w-3/4" />
                         </div>
                     )}
-                    {analysisResult && !loading && <AnalysisResultDisplay result={analysisResult} />}
+                    {analysisResult && !loading && (
+                        <>
+                            <AnalysisResultDisplay result={analysisResult} />
+                            <div className="pt-4">
+                                <Button onClick={() => onSetAlerts(analysisResult)} disabled={isAlertSet}>
+                                    <BellRing className="mr-2 h-4 w-4" />
+                                    {isAlertSet ? 'Alerts Activated' : 'Activate Price Alerts'}
+                                </Button>
+                                <p className="text-xs text-muted-foreground mt-2">
+                                    Activate to receive notifications for Entry, Take Profit, and Stop Loss levels.
+                                </p>
+                            </div>
+                        </>
+                    )}
                     {!analysisResult && !loading && (
                         <p className="text-sm text-muted-foreground">Click "Analyze Chart" to see the AI's insights.</p>
                     )}
