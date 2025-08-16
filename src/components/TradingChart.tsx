@@ -40,8 +40,8 @@ const getChartColors = (element: HTMLElement) => {
         redColor: '#ef5350',
         yellowColor: '#FFEB3B',
         backgroundColor: backgroundColor, // Important for erasing fill
-        greenFillColor: 'rgba(38, 166, 154, 0.4)',
-        redFillColor: 'rgba(239, 83, 80, 0.4)',
+        greenFillColor: 'rgba(38, 166, 154, 0.3)',
+        redFillColor: 'rgba(239, 83, 80, 0.3)',
     };
 };
 
@@ -184,12 +184,17 @@ export const TradingChart = ({
             entryLineRef.current.setData([{ time: lastCandleTime, value: entryPrice }]);
         }
 
-        const commonAreaOptions = { lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false, lineColor: 'transparent', topColor: 'transparent' };
         const createRegion = (topPrice: number, bottomPrice: number, fillColor: string): LightweightCharts.ISeriesApi<'Area'>[] => {
             if (isNaN(topPrice) || isNaN(bottomPrice)) return [];
-            const fillSeries = chart.addAreaSeries({ ...commonAreaOptions, bottomColor: fillColor });
+            const commonAreaOptions = {
+                lastValueVisible: false,
+                priceLineVisible: false,
+                crosshairMarkerVisible: false,
+                lineColor: 'transparent',
+            };
+            const fillSeries = chart.addAreaSeries({ ...commonAreaOptions, topColor: fillColor, bottomColor: fillColor });
             fillSeries.setData([{ time: lastCandleTime, value: topPrice }]);
-            const eraseSeries = chart.addAreaSeries({ ...commonAreaOptions, bottomColor: colors.backgroundColor });
+            const eraseSeries = chart.addAreaSeries({ ...commonAreaOptions, topColor: colors.backgroundColor, bottomColor: colors.backgroundColor });
             eraseSeries.setData([{ time: lastCandleTime, value: bottomPrice }]);
             return [fillSeries, eraseSeries];
         };
@@ -227,7 +232,7 @@ export const TradingChart = ({
         if (realEndTime <= startTime) return;
 
         const interval = (data[data.length - 1].time as number) - (data[data.length - 2].time as number);
-        const projectionCandles = 150;
+        const projectionCandles = 300; // Increased width
         const projectedEndTime = (realEndTime as number) + (interval * projectionCandles);
         
         const endTime = (tradeEndTimeRef.current ? realEndTime : projectedEndTime) as LightweightCharts.UTCTimestamp;
