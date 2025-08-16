@@ -9,7 +9,6 @@ import { useDebounce } from '@/hooks/use-debounce';
 import {
     Pagination,
     PaginationContent,
-    PaginationEllipsis,
     PaginationItem,
     PaginationLink,
     PaginationNext,
