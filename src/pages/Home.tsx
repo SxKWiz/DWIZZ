@@ -8,7 +8,24 @@ import * as LightweightCharts from 'lightweight-charts';
 import { Input } from '@/components/ui/input';
 import { useDebounce } from '@/hooks/use-debounce';
 import RecentHistory from '@/components/RecentHistory';
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from '@/components/ui/button';
+import { ChevronDown } from 'lucide-react';
+
+const timeframeOptions = [
+    { value: '1m', label: '1 Minute' },
+    { value: '15m', label: '15 Minutes' },
+    { value: '1h', label: '1 Hour' },
+    { value: '4h', label: '4 Hours' },
+    { value: '12h', label: '12 Hours' },
+    { value: '1d', label: '1 Day' },
+    { value: '1w', label: '1 Week' },
+];
 
 const Home = () => {
     const [symbol, setSymbol] = useState('BTCUSDT');
@@ -68,20 +85,21 @@ const Home = () => {
                 <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between gap-4">
                     <CardTitle>{symbol ? `${symbol.replace('USDT', '/USDT')} Chart` : 'Enter a symbol'}</CardTitle>
                     <div className="flex flex-col-reverse sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
-                        <ToggleGroup
-                            type="single"
-                            value={timeframe}
-                            onValueChange={(value) => {
-                                if (value) setTimeframe(value);
-                            }}
-                            aria-label="Timeframe"
-                            className="w-full sm:w-auto"
-                        >
-                            <ToggleGroupItem value="1h" aria-label="1 Hour" className="flex-1 sm:flex-none">1H</ToggleGroupItem>
-                            <ToggleGroupItem value="4h" aria-label="4 Hours" className="flex-1 sm:flex-none">4H</ToggleGroupItem>
-                            <ToggleGroupItem value="1d" aria-label="1 Day" className="flex-1 sm:flex-none">1D</ToggleGroupItem>
-                            <ToggleGroupItem value="1w" aria-label="1 Week" className="flex-1 sm:flex-none">1W</ToggleGroupItem>
-                        </ToggleGroup>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" className="w-full sm:w-[180px] justify-between">
+                                    {timeframeOptions.find(t => t.value === timeframe)?.label}
+                                    <ChevronDown className="ml-2 h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-[180px]">
+                                {timeframeOptions.map((option) => (
+                                    <DropdownMenuItem key={option.value} onSelect={() => setTimeframe(option.value)}>
+                                        {option.label}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         <div className="w-full sm:max-w-xs">
                             <Input
                                 placeholder="e.g., BTCUSDT"
