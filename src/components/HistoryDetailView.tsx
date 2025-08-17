@@ -61,23 +61,17 @@ const HistoryDetailView = ({ symbol, timeframe, createdAt, result }: HistoryDeta
 
                 const combinedData = [...formattedHistoryData, ...formattedFutureData];
                 
-                // 3. Final, brute-force data cleaning to guarantee chart integrity
-                const dataMap = new Map<number, ChartData>();
-                for (const item of combinedData) {
-                    dataMap.set(item.time as number, item);
-                }
-                const sortedData = Array.from(dataMap.values()).sort((a, b) => (a.time as number) - (b.time as number));
+                // 3. Final, foolproof data cleaning process
+                // First, sort all data chronologically.
+                const sorted = combinedData.sort((a, b) => (a.time as number) - (b.time as number));
 
-                const finalCleanData: ChartData[] = [];
-                if (sortedData.length > 0) {
-                    finalCleanData.push(sortedData[0]);
-                    for (let i = 1; i < sortedData.length; i++) {
-                        // Explicitly check that the current timestamp is greater than the previous one
-                        if ((sortedData[i].time as number) > (finalCleanData[finalCleanData.length - 1].time as number)) {
-                            finalCleanData.push(sortedData[i]);
-                        }
+                // Then, reduce to a clean array, ensuring each timestamp is strictly greater than the last.
+                const finalCleanData = sorted.reduce((acc: ChartData[], current) => {
+                    if (acc.length === 0 || (current.time as number) > (acc[acc.length - 1].time as number)) {
+                        acc.push(current);
                     }
-                }
+                    return acc;
+                }, []);
                 
                 setChartData(finalCleanData);
 
