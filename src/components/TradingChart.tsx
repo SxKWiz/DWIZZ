@@ -107,9 +107,6 @@ export const TradingChart = ({
             return;
         }
 
-        const uniqueData = Array.from(new Map(data.map(item => [item.time, item])).values());
-        const sortedData = uniqueData.sort((a, b) => (a.time as number) - (b.time as number));
-
         if (chartInstanceRef.current) {
             chartInstanceRef.current.remove();
         }
@@ -147,7 +144,7 @@ export const TradingChart = ({
             wickUpColor: colors.greenColor,
         });
 
-        candlestickSeries.setData(sortedData);
+        candlestickSeries.setData(data);
         seriesRef.current = candlestickSeries;
         chart.timeScale().fitContent();
 

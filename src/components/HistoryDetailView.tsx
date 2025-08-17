@@ -32,8 +32,8 @@ const HistoryDetailView = ({ symbol, timeframe, createdAt, result }: HistoryDeta
 
                 // Fetch data before and including the analysis time
                 const historyPromise = fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&endTime=${analysisTime}&limit=1000`);
-                // Fetch data after the analysis time until now
-                const futurePromise = fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&startTime=${analysisTime}&limit=1000`);
+                // Fetch data after the analysis time, adding 1ms to startTime to prevent overlap
+                const futurePromise = fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&startTime=${analysisTime + 1}&limit=1000`);
 
                 const [historyResponse, futureResponse] = await Promise.all([historyPromise, futurePromise]);
 
@@ -60,6 +60,7 @@ const HistoryDetailView = ({ symbol, timeframe, createdAt, result }: HistoryDeta
                 const formattedFutureData = formatData(futureData);
 
                 const combinedData = [...formattedHistoryData, ...formattedFutureData];
+                // De-dupe and sort to guarantee data integrity for the chart
                 const uniqueData = Array.from(new Map(combinedData.map(item => [item.time, item])).values());
                 const sortedData = uniqueData.sort((a, b) => (a.time as number) - (b.time as number));
                 
