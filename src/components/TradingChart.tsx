@@ -330,10 +330,16 @@ export const TradingChart = ({
     }, [latestCandle, analysisResult, triggeredAlerts, data]);
 
     useEffect(() => {
-        if (seriesRef.current && latestCandle) {
-            seriesRef.current.update(latestCandle);
+        if (seriesRef.current && latestCandle && data.length > 0) {
+            // Only update if the new candle timestamp is greater than or equal to the last data point
+            const lastDataTime = data[data.length - 1].time as number;
+            const newCandleTime = latestCandle.time as number;
+            
+            if (newCandleTime >= lastDataTime) {
+                seriesRef.current.update(latestCandle);
+            }
         }
-    }, [latestCandle]);
+    }, [latestCandle, data]);
 
     return (
         <div className="relative">

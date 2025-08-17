@@ -91,13 +91,27 @@ const Home = () => {
                     throw new Error(`Binance API Error: ${data.msg}`);
                 }
 
-                const formattedData: ChartData[] = data.map((d: any) => ({
+                const rawFormattedData: ChartData[] = data.map((d: any) => ({
                     time: (d[0] / 1000) as LightweightCharts.UTCTimestamp,
                     open: parseFloat(d[1]),
                     high: parseFloat(d[2]),
                     low: parseFloat(d[3]),
                     close: parseFloat(d[4]),
                 }));
+
+                // Data cleaning using a Map to guarantee uniqueness and proper sorting
+                const dataMap = new Map<number, ChartData>();
+                for (const item of rawFormattedData) {
+                    // This will overwrite any existing entry with the same timestamp,
+                    // effectively de-duplicating and keeping the latest version of the candle.
+                    if (item && typeof item.time === 'number' && !isNaN(item.time)) {
+                        dataMap.set(item.time as number, item);
+                    }
+                }
+
+                // Convert the map back to an array and sort it.
+                // The sort is crucial as map iteration order is based on insertion order, not key order.
+                const formattedData = Array.from(dataMap.values()).sort((a, b) => (a.time as number) - (b.time as number));
                 setChartData(formattedData);
             } catch (error) {
                 console.error("Error fetching chart data:", error);
