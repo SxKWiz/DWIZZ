@@ -61,11 +61,23 @@ const HistoryDetailView = ({ symbol, timeframe, createdAt, result }: HistoryDeta
 
                 const combinedData = [...formattedHistoryData, ...formattedFutureData];
                 
-                // 3. Final safeguard: de-duplicate and sort the data
-                const uniqueData = Array.from(new Map(combinedData.map(item => [item.time, item])).values());
-                const sortedData = uniqueData.sort((a, b) => (a.time as number) - (b.time as number));
+                // 3. Rigorous de-duplication and sorting to guarantee data integrity
+                const seenTimestamps = new Set<number>();
+                const uniqueData: ChartData[] = [];
+                // Iterate backwards to keep the newest entry in case of duplicates from API overlap
+                for (let i = combinedData.length - 1; i >= 0; i--) {
+                    const item = combinedData[i];
+                    const time = item.time as number;
+                    if (!seenTimestamps.has(time)) {
+                        seenTimestamps.add(time);
+                        uniqueData.push(item);
+                    }
+                }
+                // The data is now unique but in reverse chronological order, so we reverse it back.
+                uniqueData.reverse();
                 
-                setChartData(sortedData);
+                setChartData(uniqueData);
+
             } catch (error) {
                 console.error("Error fetching historical chart data:", error);
                 showError((error as Error).message || `Could not load historical data for ${symbol}.`);
