@@ -61,20 +61,19 @@ const HistoryDetailView = ({ symbol, timeframe, createdAt, result }: HistoryDeta
 
                 const combinedData = [...formattedHistoryData, ...formattedFutureData];
                 
-                // 3. Foolproof two-stage data cleaning process
-                // Stage 1: Aggressively filter out any malformed or non-numeric data points.
-                const validData = combinedData.filter(
-                    d => d && typeof d.time === 'number' && !isNaN(d.time)
-                );
-
-                // Stage 2: Sort and then reduce to guarantee uniqueness and strict ascending order.
-                const sorted = validData.sort((a, b) => (a.time as number) - (b.time as number));
-                const finalCleanData = sorted.reduce((acc: ChartData[], current) => {
-                    if (acc.length === 0 || (current.time as number) > (acc[acc.length - 1].time as number)) {
-                        acc.push(current);
+                // 3. Definitive data cleaning using a Map to guarantee uniqueness.
+                const dataMap = new Map<number, ChartData>();
+                for (const item of combinedData) {
+                    // This will overwrite any existing entry with the same timestamp,
+                    // effectively de-duplicating and keeping the latest version of the candle.
+                    if (item && typeof item.time === 'number' && !isNaN(item.time)) {
+                        dataMap.set(item.time as number, item);
                     }
-                    return acc;
-                }, []);
+                }
+
+                // Convert the map back to an array and sort it.
+                // The sort is crucial as map iteration order is based on insertion order, not key order.
+                const finalCleanData = Array.from(dataMap.values()).sort((a, b) => (a.time as number) - (b.time as number));
                 
                 setChartData(finalCleanData);
 
