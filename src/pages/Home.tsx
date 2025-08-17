@@ -37,12 +37,9 @@ const Home = () => {
     const [chartData, setChartData] = useState<ChartData[]>([]);
     const [loadingChart, setLoadingChart] = useState(true);
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
-    const [armedAnalysis, setArmedAnalysis] = useState<AnalysisResult | null>(null);
+    const [activeAlert, setActiveAlert] = useState<any | null>(null);
     const [latestCandle, setLatestCandle] = useState<ChartData | null>(null);
-    const [triggeredAlerts, setTriggeredAlerts] = useState<Set<string>>(new Set());
-    const [isTradeEntered, setIsTradeEntered] = useState(false);
-    const prevPriceRef = useRef<number | null>(null);
-    const { user, profile } = useAuth();
+    const { user } = useAuth();
 
     const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -53,12 +50,35 @@ const Home = () => {
     }, [debouncedSearchTerm]);
 
     useEffect(() => {
+        const fetchActiveAlert = async () => {
+            if (!user || !symbol) {
+                setActiveAlert(null);
+                return;
+            }
+            const { data, error } = await supabase
+                .from('price_alerts')
+                .select('*')
+                .eq('user_id', user.id)
+                .eq('symbol', symbol)
+                .eq('is_active', true)
+                .maybeSingle();
+
+            if (error) {
+                console.error("Error fetching active alert:", error);
+            } else {
+                setActiveAlert(data);
+            }
+        };
+
+        fetchActiveAlert();
+    }, [symbol, user]);
+
+    useEffect(() => {
         const fetchChartData = async () => {
             if (!symbol) return;
 
             setLoadingChart(true);
             setAnalysisResult(null);
-            setArmedAnalysis(null);
             setLatestCandle(null);
             try {
                 const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&limit=1000`);
@@ -123,100 +143,50 @@ const Home = () => {
         };
     }, [symbol, timeframe, loadingChart]);
 
-    // Effect to reset alerts when a new analysis is generated
-    useEffect(() => {
-        setTriggeredAlerts(new Set());
-        prevPriceRef.current = null;
-        setIsTradeEntered(false);
-    }, [armedAnalysis]);
-
-    // Effect for price alert notifications
-    useEffect(() => {
-        if (!latestCandle || !armedAnalysis || !profile?.notifications_enabled) {
+    const handleSetAlerts = async (result: AnalysisResult, analysisId: string) => {
+        if (!user) {
+            showError("You must be logged in to set alerts.");
             return;
         }
 
-        const currentPrice = latestCandle.close;
-        const prevPrice = prevPriceRef.current;
-
-        if (prevPrice === null) {
-            prevPriceRef.current = currentPrice;
-            return;
+        // Deactivate any existing alerts for this symbol first
+        if (activeAlert) {
+            await supabase.from('price_alerts').update({ is_active: false }).eq('id', activeAlert.id);
         }
 
-        const entryPrice = parseFloat(String(armedAnalysis.entryPrice).replace(/[^0-9.-]+/g, ""));
-        const takeProfit = parseFloat(String(armedAnalysis.takeProfit).replace(/[^0-9.-]+/g, ""));
-        const stopLoss = parseFloat(String(armedAnalysis.stopLoss).replace(/[^0-9.-]+/g, ""));
-        const isLong = armedAnalysis.sentiment.toLowerCase().includes('bullish');
-        const isShort = armedAnalysis.sentiment.toLowerCase().includes('bearish');
+        const { data: newAlert, error } = await supabase.from('price_alerts').insert({
+            user_id: user.id,
+            analysis_history_id: analysisId,
+            symbol: symbol,
+            entry_price: parseFloat(String(result.entryPrice).replace(/[^0-9.-]+/g, "")),
+            take_profit: parseFloat(String(result.takeProfit).replace(/[^0-9.-]+/g, "")),
+            stop_loss: parseFloat(String(result.stopLoss).replace(/[^0-9.-]+/g, "")),
+            is_long: result.sentiment.toLowerCase().includes('bullish'),
+        }).select().single();
 
-        const saveNotification = (message: string) => {
-            if (user) {
-                supabase.from('notifications').insert({ user_id: user.id, message }).then(({ error }) => {
-                    if (error) {
-                        console.error("Error saving notification:", error);
-                    }
-                });
-            }
-        };
-
-        // 1. Check for Entry if not already entered
-        if (!isTradeEntered && !triggeredAlerts.has('entry') && !isNaN(entryPrice)) {
-            let entryTriggered = false;
-            if (isLong && prevPrice < entryPrice && currentPrice >= entryPrice) entryTriggered = true;
-            if (isShort && prevPrice > entryPrice && currentPrice <= entryPrice) entryTriggered = true;
-
-            if (entryTriggered) {
-                const message = `${symbol.replace('USDT', '/USDT')} has crossed the Entry Price at ${armedAnalysis.entryPrice}`;
-                showInfo(message);
-                setTriggeredAlerts(prev => new Set(prev).add('entry'));
-                setIsTradeEntered(true);
-                saveNotification(message);
-            }
+        if (error) {
+            showError("Failed to activate price alerts.");
+            console.error("Error setting alert:", error);
+        } else {
+            showSuccess(`Price alerts for ${symbol.replace('USDT', '/USDT')} have been activated.`);
+            setActiveAlert(newAlert);
         }
-
-        // 2. Check for TP and SL only if trade is entered
-        if (isTradeEntered) {
-            // Check Take Profit
-            if (!triggeredAlerts.has('tp') && !isNaN(takeProfit)) {
-                let tpTriggered = false;
-                if (isLong && currentPrice >= takeProfit) tpTriggered = true;
-                if (isShort && currentPrice <= takeProfit) tpTriggered = true;
-
-                if (tpTriggered) {
-                    const message = `${symbol.replace('USDT', '/USDT')} has reached the Take Profit level at ${armedAnalysis.takeProfit}`;
-                    showInfo(message);
-                    setTriggeredAlerts(prev => new Set(prev).add('tp'));
-                    saveNotification(message);
-                }
-            }
-
-            // Check Stop Loss
-            if (!triggeredAlerts.has('sl') && !isNaN(stopLoss)) {
-                let slTriggered = false;
-                if (isLong && currentPrice <= stopLoss) slTriggered = true;
-                if (isShort && currentPrice >= stopLoss) slTriggered = true;
-
-                if (slTriggered) {
-                    const message = `${symbol.replace('USDT', '/USDT')} has hit the Stop Loss level at ${armedAnalysis.stopLoss}`;
-                    showInfo(message);
-                    setTriggeredAlerts(prev => new Set(prev).add('sl'));
-                    saveNotification(message);
-                }
-            }
-        }
-
-        prevPriceRef.current = currentPrice;
-    }, [latestCandle, armedAnalysis, symbol, triggeredAlerts, profile, user, isTradeEntered]);
-
-    const handleSetAlerts = (result: AnalysisResult) => {
-        setArmedAnalysis(result);
-        showSuccess(`Price alerts for ${symbol.replace('USDT', '/USDT')} have been activated.`);
     };
 
-    const handleCancelAlerts = () => {
-        setArmedAnalysis(null);
-        showInfo(`Price alerts for ${symbol.replace('USDT', '/USDT')} have been deactivated.`);
+    const handleCancelAlerts = async () => {
+        if (!activeAlert) return;
+
+        const { error } = await supabase
+            .from('price_alerts')
+            .update({ is_active: false })
+            .eq('id', activeAlert.id);
+
+        if (error) {
+            showError("Failed to deactivate price alerts.");
+        } else {
+            showInfo(`Price alerts for ${symbol.replace('USDT', '/USDT')} have been deactivated.`);
+            setActiveAlert(null);
+        }
     };
 
     return (
@@ -257,7 +227,7 @@ const Home = () => {
                             data={chartData}
                             analysisResult={analysisResult}
                             latestCandle={latestCandle}
-                            triggeredAlerts={triggeredAlerts}
+                            triggeredAlerts={new Set()}
                         />
                     ) : (
                         <div className="flex items-center justify-center h-[500px] text-muted-foreground">
@@ -272,11 +242,11 @@ const Home = () => {
                 timeframe={timeframe}
                 onAnalysisComplete={(result) => {
                     setAnalysisResult(result);
-                    setArmedAnalysis(null);
+                    setActiveAlert(null);
                 }}
                 onSetAlerts={handleSetAlerts}
                 onCancelAlerts={handleCancelAlerts}
-                isAlertSet={!!(armedAnalysis && analysisResult && armedAnalysis.entryPrice === analysisResult.entryPrice)}
+                isAlertSet={!!activeAlert}
             />
             <RecentHistory />
         </div>

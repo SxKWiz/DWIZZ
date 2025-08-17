@@ -23,7 +23,7 @@ interface AnalysisPanelProps {
     symbol: string;
     timeframe: string;
     onAnalysisComplete: (result: AnalysisResult | null) => void;
-    onSetAlerts: (result: AnalysisResult) => void;
+    onSetAlerts: (result: AnalysisResult, analysisId: string) => void;
     onCancelAlerts: () => void;
     isAlertSet: boolean;
 }
@@ -32,6 +32,7 @@ const AnalysisPanel = ({ chartData, symbol, timeframe, onAnalysisComplete, onSet
     const [mode, setMode] = useState<AnalysisMode>('normal');
     const [loading, setLoading] = useState(false);
     const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
+    const [analysisHistoryId, setAnalysisHistoryId] = useState<string | null>(null);
     const { user } = useAuth();
 
     const handleAnalyze = async () => {
@@ -41,6 +42,7 @@ const AnalysisPanel = ({ chartData, symbol, timeframe, onAnalysisComplete, onSet
         }
         setLoading(true);
         setAnalysisResult(null);
+        setAnalysisHistoryId(null);
         onAnalysisComplete(null);
 
         const functionName = mode === 'ultra' ? 'analyze-symbol-ultra' : 'analyze-symbol';
@@ -58,7 +60,7 @@ const AnalysisPanel = ({ chartData, symbol, timeframe, onAnalysisComplete, onSet
             onAnalysisComplete(resultData);
 
             if (user) {
-                const { error: insertError } = await supabase
+                const { data: historyData, error: insertError } = await supabase
                     .from('analysis_history')
                     .insert({
                         user_id: user.id,
@@ -66,12 +68,17 @@ const AnalysisPanel = ({ chartData, symbol, timeframe, onAnalysisComplete, onSet
                         mode: mode,
                         result: resultData,
                         timeframe: timeframe
-                    });
+                    })
+                    .select('id')
+                    .single();
 
                 if (insertError) {
                     showError('Failed to save analysis history.');
                     console.error('Error saving analysis:', insertError);
                 } else {
+                    if (historyData) {
+                        setAnalysisHistoryId(historyData.id);
+                    }
                     showSuccess('Analysis saved to history.');
                 }
             }
@@ -137,14 +144,22 @@ const AnalysisPanel = ({ chartData, symbol, timeframe, onAnalysisComplete, onSet
                                         Cancel Price Alerts
                                     </Button>
                                 ) : (
-                                    <Button onClick={() => onSetAlerts(analysisResult)}>
+                                    <Button 
+                                        onClick={() => {
+                                            if (analysisHistoryId) {
+                                                onSetAlerts(analysisResult, analysisHistoryId)
+                                            } else {
+                                                showError("Analysis must be saved before setting alerts.");
+                                            }
+                                        }}
+                                    >
                                         <BellRing className="mr-2 h-4 w-4" />
                                         Activate Price Alerts
                                     </Button>
                                 )}
                                 <p className="text-xs text-muted-foreground mt-2">
                                     {isAlertSet
-                                        ? 'Notifications for this analysis are currently active.'
+                                        ? 'A background monitor for this analysis is currently active.'
                                         : 'Activate to receive notifications for Entry, Take Profit, and Stop Loss levels.'}
                                 </p>
                             </div>
