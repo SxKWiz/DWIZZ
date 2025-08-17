@@ -53,12 +53,14 @@ export const TradingChart = ({
     latestCandle,
     triggeredAlerts,
     height = 500,
+    analysisCreatedAt,
 }: {
     data: ChartData[];
     analysisResult: AnalysisResult | null;
     latestCandle: ChartData | null;
     triggeredAlerts: Set<string>;
     height?: number;
+    analysisCreatedAt?: string;
 }) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartInstanceRef = useRef<LightweightCharts.IChartApi | null>(null);
@@ -68,6 +70,7 @@ export const TradingChart = ({
     const entryLineRef = useRef<LightweightCharts.ISeriesApi<'Line'> | null>(null);
     const tpLineRef = useRef<LightweightCharts.ISeriesApi<'Line'> | null>(null);
     const slLineRef = useRef<LightweightCharts.ISeriesApi<'Line'> | null>(null);
+    const analysisTimeLineRef = useRef<LightweightCharts.ISeriesApi<'Line'> | null>(null);
     const analysisTimeRef = useRef<LightweightCharts.UTCTimestamp | null>(null);
     const tradeEndTimeRef = useRef<LightweightCharts.UTCTimestamp | null>(null);
     const tpRegionSeries = useRef<LightweightCharts.ISeriesApi<'Area'>[]>([]);
@@ -174,12 +177,14 @@ export const TradingChart = ({
             if (tpLineRef.current) chart.removeSeries(tpLineRef.current);
             if (slLineRef.current) chart.removeSeries(slLineRef.current);
             if (trendLineSeriesRef.current) chart.removeSeries(trendLineSeriesRef.current);
+            if (analysisTimeLineRef.current) chart.removeSeries(analysisTimeLineRef.current);
             tpRegionSeries.current.forEach(s => chart.removeSeries(s));
             slRegionSeries.current.forEach(s => chart.removeSeries(s));
             entryLineRef.current = null;
             tpLineRef.current = null;
             slLineRef.current = null;
             trendLineSeriesRef.current = null;
+            analysisTimeLineRef.current = null;
             tpRegionSeries.current = [];
             slRegionSeries.current = [];
             analysisTimeRef.current = null;
@@ -193,8 +198,38 @@ export const TradingChart = ({
         }
 
         const colors = getChartColors(chartContainerRef.current);
-        const lastCandleTime = data[data.length - 1].time as LightweightCharts.UTCTimestamp;
-        analysisTimeRef.current = lastCandleTime;
+        
+        const analysisTimestamp = analysisCreatedAt
+            ? (new Date(analysisCreatedAt).getTime() / 1000)
+            : (data[data.length - 1].time as number);
+
+        const closestDataPoint = data.reduce((prev, curr) =>
+            Math.abs((curr.time as number) - analysisTimestamp) < Math.abs((prev.time as number) - analysisTimestamp) ? curr : prev
+        );
+        
+        analysisTimeRef.current = closestDataPoint.time as LightweightCharts.UTCTimestamp;
+
+        const visibleRange = chart.timeScale().getVisibleLogicalRange();
+        if (visibleRange) {
+            const visibleData = data.slice(Math.floor(visibleRange.from), Math.ceil(visibleRange.to));
+            if (visibleData.length > 0) {
+                const high = Math.max(...visibleData.map(d => d.high));
+                const low = Math.min(...visibleData.map(d => d.low));
+                
+                analysisTimeLineRef.current = chart.addLineSeries({
+                    color: 'rgba(156, 163, 175, 0.7)',
+                    lineWidth: 1,
+                    lineStyle: LightweightCharts.LineStyle.Dotted,
+                    lastValueVisible: false,
+                    priceLineVisible: false,
+                    crosshairMarkerVisible: false,
+                });
+                analysisTimeLineRef.current.setData([
+                    { time: analysisTimeRef.current, value: low * 0.98 },
+                    { time: analysisTimeRef.current, value: high * 1.02 },
+                ]);
+            }
+        }
 
         const entryPrice = parseFloat(String(analysisResult.entryPrice).replace(/[^0-9.-]+/g, ""));
         const takeProfit = parseFloat(String(analysisResult.takeProfit).replace(/[^0-9.-]+/g, ""));
@@ -203,15 +238,15 @@ export const TradingChart = ({
         const commonLineOptions = { lastValueVisible: false, priceLineVisible: false, crosshairMarkerVisible: false, lineWidth: 2 } as const;
         if (!isNaN(takeProfit)) {
             tpLineRef.current = chart.addLineSeries({ ...commonLineOptions, color: colors.greenColor });
-            tpLineRef.current.setData([{ time: lastCandleTime, value: takeProfit }]);
+            tpLineRef.current.setData([{ time: analysisTimeRef.current, value: takeProfit }]);
         }
         if (!isNaN(stopLoss)) {
             slLineRef.current = chart.addLineSeries({ ...commonLineOptions, color: colors.redColor });
-            slLineRef.current.setData([{ time: lastCandleTime, value: stopLoss }]);
+            slLineRef.current.setData([{ time: analysisTimeRef.current, value: stopLoss }]);
         }
         if (!isNaN(entryPrice)) {
             entryLineRef.current = chart.addLineSeries({ ...commonLineOptions, color: colors.primaryColor, lineStyle: LightweightCharts.LineStyle.Dashed });
-            entryLineRef.current.setData([{ time: lastCandleTime, value: entryPrice }]);
+            entryLineRef.current.setData([{ time: analysisTimeRef.current, value: entryPrice }]);
         }
 
         const createRegion = (topPrice: number, bottomPrice: number, fillColor: string): LightweightCharts.ISeriesApi<'Area'>[] => {
@@ -223,9 +258,9 @@ export const TradingChart = ({
                 lineColor: 'transparent',
             };
             const fillSeries = chart.addAreaSeries({ ...commonAreaOptions, topColor: fillColor, bottomColor: fillColor });
-            fillSeries.setData([{ time: lastCandleTime, value: topPrice }]);
+            fillSeries.setData([{ time: analysisTimeRef.current, value: topPrice }]);
             const eraseSeries = chart.addAreaSeries({ ...commonAreaOptions, topColor: colors.backgroundColor, bottomColor: colors.backgroundColor });
-            eraseSeries.setData([{ time: lastCandleTime, value: bottomPrice }]);
+            eraseSeries.setData([{ time: analysisTimeRef.current, value: bottomPrice }]);
             return [fillSeries, eraseSeries];
         };
 
@@ -247,7 +282,7 @@ export const TradingChart = ({
                 trendLineSeriesRef.current.setData(sortedPoints.map(p => ({ time: p.time as LightweightCharts.UTCTimestamp, value: p.price })));
             }
         }
-    }, [analysisResult, data]);
+    }, [analysisResult, data, analysisCreatedAt]);
 
     useEffect(() => {
         if (!analysisResult || !latestCandle || !analysisTimeRef.current || data.length < 2) return;

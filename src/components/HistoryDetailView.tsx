@@ -119,6 +119,7 @@ const HistoryDetailView = ({ symbol, timeframe, createdAt, result }: HistoryDeta
                     latestCandle={latestCandle}
                     triggeredAlerts={new Set()} 
                     height={400} 
+                    analysisCreatedAt={createdAt}
                 />
             ) : (
                  <Alert>
