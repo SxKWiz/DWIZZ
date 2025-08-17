@@ -1,6 +1,8 @@
 import * as LightweightCharts from 'lightweight-charts';
 import React, { useEffect, useRef } from 'react';
 import { AnalysisResult } from './AnalysisResultDisplay';
+import { Button } from './ui/button';
+import { ZoomIn, ZoomOut } from 'lucide-react';
 
 export type ChartData = LightweightCharts.CandlestickData;
 
@@ -70,6 +72,32 @@ export const TradingChart = ({
     const tradeEndTimeRef = useRef<LightweightCharts.UTCTimestamp | null>(null);
     const tpRegionSeries = useRef<LightweightCharts.ISeriesApi<'Area'>[]>([]);
     const slRegionSeries = useRef<LightweightCharts.ISeriesApi<'Area'>[]>([]);
+
+    const handleZoom = (direction: 'in' | 'out') => {
+        const chart = chartInstanceRef.current;
+        if (!chart) return;
+
+        const timeScale = chart.timeScale();
+        const logicalRange = timeScale.getVisibleLogicalRange();
+
+        if (logicalRange === null) {
+            return;
+        }
+
+        const zoomFactor = 0.2;
+        const currentBarCount = logicalRange.to - logicalRange.from;
+
+        const newBarCount = direction === 'in'
+            ? Math.max(10, currentBarCount * (1 - zoomFactor)) // Prevent zooming in too far
+            : currentBarCount * (1 + zoomFactor);
+
+        const centerIndex = (logicalRange.from + logicalRange.to) / 2;
+
+        const newFrom = centerIndex - newBarCount / 2;
+        const newTo = centerIndex + newBarCount / 2;
+
+        timeScale.setVisibleLogicalRange({ from: newFrom, to: newTo });
+    };
 
     useEffect(() => {
         if (!chartContainerRef.current || data.length === 0) {
@@ -275,7 +303,19 @@ export const TradingChart = ({
         }
     }, [latestCandle]);
 
-    return <div ref={chartContainerRef} className="w-full" style={{ height: `${height}px` }} />;
+    return (
+        <div className="relative">
+            <div ref={chartContainerRef} className="w-full" style={{ height: `${height}px` }} />
+            <div className="absolute top-2 right-2 z-10 flex gap-1">
+                <Button variant="ghost" size="icon" onClick={() => handleZoom('in')} aria-label="Zoom in">
+                    <ZoomIn className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => handleZoom('out')} aria-label="Zoom out">
+                    <ZoomOut className="h-4 w-4" />
+                </Button>
+            </div>
+        </div>
+    );
 };
 
 export default TradingChart;
