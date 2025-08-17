@@ -81,7 +81,7 @@ export const HistoryItemCard = ({ item, onDelete }: HistoryItemCardProps) => {
                             View Details
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[800px]">
+                    <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>Analysis Details</DialogTitle>
                             <DialogDescription>
