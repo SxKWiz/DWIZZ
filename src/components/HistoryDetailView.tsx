@@ -30,24 +30,6 @@ const HistoryDetailView = ({ symbol, timeframe, createdAt, result }: HistoryDeta
             try {
                 const analysisTime = new Date(createdAt).getTime();
 
-                // Fetch data before and including the analysis time
-                const historyPromise = fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&endTime=${analysisTime}&limit=1000`);
-                // Fetch data after the analysis time, adding 1ms to startTime to prevent overlap
-                const futurePromise = fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&startTime=${analysisTime + 1}&limit=1000`);
-
-                const [historyResponse, futureResponse] = await Promise.all([historyPromise, futurePromise]);
-
-                if (!historyResponse.ok || !futureResponse.ok) {
-                    throw new Error('Failed to fetch historical data from Binance.');
-                }
-
-                const historyData = await historyResponse.json();
-                const futureData = await futureResponse.json();
-
-                if ((historyData.code !== undefined && historyData.msg) || (futureData.code !== undefined && futureData.msg)) {
-                    throw new Error(`Binance API Error: ${historyData.msg || futureData.msg}`);
-                }
-
                 const formatData = (data: any[]): ChartData[] => data.map((d: any) => ({
                     time: (d[0] / 1000) as LightweightCharts.UTCTimestamp,
                     open: parseFloat(d[1]),
@@ -56,11 +38,30 @@ const HistoryDetailView = ({ symbol, timeframe, createdAt, result }: HistoryDeta
                     close: parseFloat(d[4]),
                 }));
 
+                // 1. Fetch historical data up to the analysis time
+                const historyResponse = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&endTime=${analysisTime}&limit=1000`);
+                if (!historyResponse.ok) throw new Error('Failed to fetch historical data from Binance.');
+                const historyData = await historyResponse.json();
+                if (historyData.code !== undefined && historyData.msg) throw new Error(`Binance API Error: ${historyData.msg}`);
                 const formattedHistoryData = formatData(historyData);
-                const formattedFutureData = formatData(futureData);
+
+                // 2. Fetch future data based on the last historical candle to prevent overlap
+                let formattedFutureData: ChartData[] = [];
+                if (formattedHistoryData.length > 0) {
+                    const lastHistoryTimestampMs = (formattedHistoryData[formattedHistoryData.length - 1].time as number) * 1000;
+                    const futureResponse = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${timeframe}&startTime=${lastHistoryTimestampMs + 1}&limit=1000`);
+                    
+                    if (futureResponse.ok) {
+                        const futureData = await futureResponse.json();
+                        if (futureData.code === undefined) {
+                            formattedFutureData = formatData(futureData);
+                        }
+                    }
+                }
 
                 const combinedData = [...formattedHistoryData, ...formattedFutureData];
-                // De-dupe and sort to guarantee data integrity for the chart
+                
+                // 3. Final safeguard: de-duplicate and sort the data
                 const uniqueData = Array.from(new Map(combinedData.map(item => [item.time, item])).values());
                 const sortedData = uniqueData.sort((a, b) => (a.time as number) - (b.time as number));
                 
