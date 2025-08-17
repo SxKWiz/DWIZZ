@@ -61,11 +61,14 @@ const HistoryDetailView = ({ symbol, timeframe, createdAt, result }: HistoryDeta
 
                 const combinedData = [...formattedHistoryData, ...formattedFutureData];
                 
-                // 3. Final, foolproof data cleaning process
-                // First, sort all data chronologically.
-                const sorted = combinedData.sort((a, b) => (a.time as number) - (b.time as number));
+                // 3. Foolproof two-stage data cleaning process
+                // Stage 1: Aggressively filter out any malformed or non-numeric data points.
+                const validData = combinedData.filter(
+                    d => d && typeof d.time === 'number' && !isNaN(d.time)
+                );
 
-                // Then, reduce to a clean array, ensuring each timestamp is strictly greater than the last.
+                // Stage 2: Sort and then reduce to guarantee uniqueness and strict ascending order.
+                const sorted = validData.sort((a, b) => (a.time as number) - (b.time as number));
                 const finalCleanData = sorted.reduce((acc: ChartData[], current) => {
                     if (acc.length === 0 || (current.time as number) > (acc[acc.length - 1].time as number)) {
                         acc.push(current);
