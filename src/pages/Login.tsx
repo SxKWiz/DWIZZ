@@ -3,12 +3,21 @@ import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
+import { ShieldCheck } from 'lucide-react';
 
 const Login = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        // Redirect if a session already exists
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+                navigate('/');
+            }
+        });
+
+        // Listen for authentication events (like signing in)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             if (session) {
                 navigate('/');
             }
@@ -31,6 +40,10 @@ const Login = () => {
                     providers={[]}
                     theme="light"
                 />
+                <div className="flex items-center justify-center pt-4 text-sm text-muted-foreground">
+                    <ShieldCheck className="h-4 w-4 mr-2 text-green-500" />
+                    <span>Your session is automatically remembered for you.</span>
+                </div>
             </div>
         </div>
     );
