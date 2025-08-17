@@ -61,22 +61,25 @@ const HistoryDetailView = ({ symbol, timeframe, createdAt, result }: HistoryDeta
 
                 const combinedData = [...formattedHistoryData, ...formattedFutureData];
                 
-                // 3. Rigorous de-duplication and sorting to guarantee data integrity
-                const seenTimestamps = new Set<number>();
-                const uniqueData: ChartData[] = [];
-                // Iterate backwards to keep the newest entry in case of duplicates from API overlap
-                for (let i = combinedData.length - 1; i >= 0; i--) {
-                    const item = combinedData[i];
-                    const time = item.time as number;
-                    if (!seenTimestamps.has(time)) {
-                        seenTimestamps.add(time);
-                        uniqueData.push(item);
+                // 3. Final, brute-force data cleaning to guarantee chart integrity
+                const dataMap = new Map<number, ChartData>();
+                for (const item of combinedData) {
+                    dataMap.set(item.time as number, item);
+                }
+                const sortedData = Array.from(dataMap.values()).sort((a, b) => (a.time as number) - (b.time as number));
+
+                const finalCleanData: ChartData[] = [];
+                if (sortedData.length > 0) {
+                    finalCleanData.push(sortedData[0]);
+                    for (let i = 1; i < sortedData.length; i++) {
+                        // Explicitly check that the current timestamp is greater than the previous one
+                        if ((sortedData[i].time as number) > (finalCleanData[finalCleanData.length - 1].time as number)) {
+                            finalCleanData.push(sortedData[i]);
+                        }
                     }
                 }
-                // The data is now unique but in reverse chronological order, so we reverse it back.
-                uniqueData.reverse();
                 
-                setChartData(uniqueData);
+                setChartData(finalCleanData);
 
             } catch (error) {
                 console.error("Error fetching historical chart data:", error);
