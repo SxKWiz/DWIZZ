@@ -131,29 +131,51 @@ const Home = () => {
         }
 
         const socket = new WebSocket(`wss://stream.binance.com:9443/ws/${symbol.toLowerCase()}@kline_${timeframe}`);
+        let isConnected = true;
+
+        socket.onopen = () => {
+            console.log(`WebSocket connected for ${symbol} ${timeframe}`);
+        };
 
         socket.onmessage = (event) => {
-            const message = JSON.parse(event.data);
-            const candle = message.k;
+            if (!isConnected) return; // Ignore messages if connection is being cleaned up
+            
+            try {
+                const message = JSON.parse(event.data);
+                const candle = message.k;
 
-            if (candle) {
-                const newCandle: ChartData = {
-                    time: (candle.t / 1000) as LightweightCharts.UTCTimestamp,
-                    open: parseFloat(candle.o),
-                    high: parseFloat(candle.h),
-                    low: parseFloat(candle.l),
-                    close: parseFloat(candle.c),
-                };
-                setLatestCandle(newCandle);
+                if (candle) {
+                    const newCandle: ChartData = {
+                        time: (candle.t / 1000) as LightweightCharts.UTCTimestamp,
+                        open: parseFloat(candle.o),
+                        high: parseFloat(candle.h),
+                        low: parseFloat(candle.l),
+                        close: parseFloat(candle.c),
+                    };
+                    setLatestCandle(newCandle);
+                }
+            } catch (error) {
+                console.error('Error parsing WebSocket message:', error);
             }
         };
 
         socket.onerror = (error) => {
-            console.error('WebSocket Error:', error);
+            if (isConnected) {
+                console.error('WebSocket Error:', error);
+            }
+        };
+
+        socket.onclose = (event) => {
+            if (isConnected) {
+                console.log(`WebSocket closed for ${symbol} ${timeframe}:`, event.code, event.reason);
+            }
         };
 
         return () => {
-            socket.close();
+            isConnected = false;
+            if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+                socket.close(1000, 'Component cleanup');
+            }
         };
     }, [symbol, timeframe, loadingChart]);
 

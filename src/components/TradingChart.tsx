@@ -221,9 +221,11 @@ export const TradingChart = ({
                     priceLineVisible: false,
                     crosshairMarkerVisible: false,
                 });
+                // Create two slightly different timestamps to avoid duplicate time error
+                const baseTime = analysisTimeRef.current as number;
                 analysisTimeLineRef.current.setData([
-                    { time: analysisTimeRef.current, value: low * 0.98 },
-                    { time: analysisTimeRef.current, value: high * 1.02 },
+                    { time: baseTime as LightweightCharts.UTCTimestamp, value: low * 0.98 },
+                    { time: (baseTime + 1) as LightweightCharts.UTCTimestamp, value: high * 1.02 },
                 ]);
             }
         }
