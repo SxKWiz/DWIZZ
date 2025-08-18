@@ -14,6 +14,19 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from "@/components/ui/pagination";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { Trash2 } from "lucide-react";
 
 const ITEMS_PER_PAGE = 9;
 
@@ -92,6 +105,23 @@ const History = () => {
         }
     };
 
+    const handleDeleteAll = async () => {
+        if (!user) return;
+
+        const { error } = await supabase
+            .from('analysis_history')
+            .delete()
+            .eq('user_id', user.id);
+
+        if (error) {
+            showError('Failed to delete all analyses.');
+            console.error('Error deleting all analyses:', error);
+        } else {
+            showSuccess('All analysis history has been deleted.');
+            fetchHistory();
+        }
+    };
+
     const handlePageChange = (page: number) => {
         if (page > 0 && page <= totalPages) {
             setCurrentPage(page);
@@ -102,12 +132,36 @@ const History = () => {
         <div className="flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <h1 className="text-2xl font-bold">Analysis History</h1>
-                <HistoryFilters
-                    symbolFilter={symbolFilter}
-                    onSymbolFilterChange={setSymbolFilter}
-                    modeFilter={modeFilter}
-                    onModeFilterChange={setModeFilter}
-                />
+                <div className="flex flex-col-reverse sm:flex-row gap-4 items-start sm:items-center">
+                    <HistoryFilters
+                        symbolFilter={symbolFilter}
+                        onSymbolFilterChange={setSymbolFilter}
+                        modeFilter={modeFilter}
+                        onModeFilterChange={setModeFilter}
+                    />
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" className="w-full sm:w-auto" disabled={history.length === 0}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete All
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete all of your analysis history.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDeleteAll}>
+                                    Yes, delete all
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </div>
             </div>
             {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
