@@ -56,9 +56,15 @@ serve(async (req) => {
 
     // 3. Fetch current prices for all unique symbols
     const symbols = Object.keys(alertsBySymbol);
-    const priceUrl = `https://api.binance.com/api/v3/ticker/price?symbols=${JSON.stringify(symbols)}`;
+    const priceUrl = new URL('https://api.binance.com/api/v3/ticker/price');
+    priceUrl.searchParams.append('symbols', JSON.stringify(symbols));
+    
     const priceResponse = await fetch(priceUrl);
-    if (!priceResponse.ok) throw new Error('Failed to fetch prices from Binance.');
+    if (!priceResponse.ok) {
+        const errorBody = await priceResponse.text();
+        console.error("Binance API Error:", errorBody);
+        throw new Error(`Failed to fetch prices from Binance. Status: ${priceResponse.status}`);
+    }
     const prices: { symbol: string; price: string }[] = await priceResponse.json();
     
     const currentPrices = prices.reduce((acc, p) => {
@@ -68,7 +74,7 @@ serve(async (req) => {
 
     const notificationsToInsert: any[] = [];
     const alertsToUpdate: any[] = [];
-    const alertsToDeactivate: any[] = [];
+    const alertsToDeactivate: string[] = [];
 
     // 4. Process alerts for each symbol
     for (const symbol of symbols) {
