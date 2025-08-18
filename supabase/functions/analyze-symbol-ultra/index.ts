@@ -33,7 +33,7 @@ async function performUltraAnalysisWithGemini(chartData: CandlestickData[], symb
             *   **Volatility:** Assess the current volatility environment (e.g., "High", "Low", "Contracting").
         2.  **Multi-Factor Technical Analysis:**
             *   **Price Action & Structure:** Identify major market structures, key support/resistance levels, and trendlines.
-            *   **Chart & Candlestick Patterns:** Pinpoint dominant chart patterns (e.g., Head and Shoulders, Triangles) and significant candlestick formations.
+            *   **Chart & Candlestick Patterns:** Pinpoint dominant chart patterns (e.g., Head and Shoulders, Double Top/Bottom, Triangles, Channels) and significant candlestick formations (e.g., Doji, Hammer, Engulfing patterns, Harami, Piercing Line, Dark Cloud Cover).
             *   **Indicator Inference:** Based on the price action, infer the likely state of key technical indicators (e.g., Moving Averages, RSI, MACD). For example, "Price is consistently closing above the inferred 50-period MA, suggesting a strong uptrend."
         3.  **Trade Hypothesis & Execution Plan:**
             *   **Primary Hypothesis:** Formulate a primary trading hypothesis with a clear directional bias.

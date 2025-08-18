@@ -29,7 +29,7 @@ async function performAnalysisWithGemini(chartData: CandlestickData[], symbol: s
 
         **Analysis Requirements:**
         1.  **Market Sentiment:** Determine the immediate market sentiment (e.g., "Bullish", "Bearish", "Neutral") based on the most recent price action.
-        2.  **Key Patterns:** Identify the most significant candlestick or simple chart pattern in the recent data.
+        2.  **Key Patterns:** Identify the most significant candlestick pattern (e.g., Doji, Hammer, Engulfing, Morning Star) or simple chart pattern (e.g., Triangle, Flag) in the recent data.
         3.  **Formulate a Trade Signal:** Based on your analysis, provide a clear, actionable trade signal. This is for educational purposes and is not financial advice.
         4.  **Risk/Reward:** Calculate the risk/reward ratio for the proposed trade.
         5.  **Identify Drawable Patterns:** If you identify a clear, simple pattern like a trendline (support or resistance), provide the coordinates for drawing it. The 'time' must be a UNIX timestamp (seconds) from the provided data.

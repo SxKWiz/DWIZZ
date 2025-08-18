@@ -221,9 +221,11 @@ export const TradingChart = ({
                     priceLineVisible: false,
                     crosshairMarkerVisible: false,
                 });
+                // Create two slightly different timestamps to avoid duplicate time error
+                const baseTime = analysisTimeRef.current as number;
                 analysisTimeLineRef.current.setData([
-                    { time: analysisTimeRef.current, value: low * 0.98 },
-                    { time: analysisTimeRef.current, value: high * 1.02 },
+                    { time: baseTime as LightweightCharts.UTCTimestamp, value: low * 0.98 },
+                    { time: (baseTime + 1) as LightweightCharts.UTCTimestamp, value: high * 1.02 },
                 ]);
             }
         }
@@ -330,10 +332,16 @@ export const TradingChart = ({
     }, [latestCandle, analysisResult, triggeredAlerts, data]);
 
     useEffect(() => {
-        if (seriesRef.current && latestCandle) {
-            seriesRef.current.update(latestCandle);
+        if (seriesRef.current && latestCandle && data.length > 0) {
+            // Only update if the new candle timestamp is greater than or equal to the last data point
+            const lastDataTime = data[data.length - 1].time as number;
+            const newCandleTime = latestCandle.time as number;
+            
+            if (newCandleTime >= lastDataTime) {
+                seriesRef.current.update(latestCandle);
+            }
         }
-    }, [latestCandle]);
+    }, [latestCandle, data]);
 
     return (
         <div className="relative">
